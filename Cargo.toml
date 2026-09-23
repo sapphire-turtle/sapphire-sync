@@ -1,0 +1,39 @@
+[workspace]
+members = [
+    "cli",
+    "crates/sapphire-sync-core",
+]
+default-members = ["cli"]
+resolver = "3"
+
+[workspace.package]
+description = "A sync-only reference app for sapphire-framework - simple P2P file sync over iroh, CLI with an embedded server"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/sapphire-turtle/sapphire-sync"
+edition = "2024"
+
+[workspace.dependencies]
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive", "env"] }
+grain-id = { version = "0.16", features = ["serde"] }
+# The framework facade. A sync app needs the server/sync stack only — never
+# `retrieve` (no search stack); the `server` feature implies `backend` +
+# `workspace`, which is where AppContext lives. `redb-store` must be enabled
+# explicitly: with default-features = false the persistent store silently
+# falls back to in-memory otherwise.
+sapphire-framework = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", default-features = false, features = ["server", "sync", "redb-store"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+thiserror = "2"
+tokio = { version = "1" }
+toml = "1.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# local crates
+sapphire-sync-core = { path = "crates/sapphire-sync-core", version = "0.1.0" }
+
+[profile.dev.package."*"]
+opt-level = 1
