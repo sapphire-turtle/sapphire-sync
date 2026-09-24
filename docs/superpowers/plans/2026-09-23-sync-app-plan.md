@@ -70,17 +70,20 @@ Constraints).
    **without spawning** (`SpawnConfig::disabled()` semantics) — not running → a message and
    **exit code 1** (same semantics as the framework's `ServerCommand::Status`); running →
    prints the `sync.status` result (enabled/id/peers/paused) plus version/pid/managed_by.
-   Mechanically: the framework's `ServerCommand` tree and its hard-coded `["server", "run"]`
-   start args (`AppServer::service_spec()` unit `ExecStart`, `SpawnConfig::default().args`)
-   do not fit this shape — see framework issue **#142** (open: flatten `ServerCommand`,
-   make start args app-configurable, start/stop/restart gap). Workaround until #142 lands:
-   the app defines its own flat clap enum (reusing the framework's `RunArgs` for `serve`,
-   the framework's `Status` semantics for `status`, and `ServiceCommand::{Install,
-   Uninstall}` for the service group) and passes
-   `SpawnConfig { args: vec!["serve".into()], ..Default::default() }` explicitly (the fields
-   are pub, so the on-demand spawn path works today); the installed unit's
-   `ExecStart = <exe> serve` is the one path blocked on #142 (or the enum temporarily
-   mirrors the hardcode — decide at Task 2 start depending on #142's merge order).
+   Mechanically: the framework today nests these under a `server` group and hard-codes the
+   `["server", "run"]` start args (`AppServer::service_spec()` unit `ExecStart`,
+   `SpawnConfig::default().args`) — it does *not* yet expose them as the flat, shared command
+   surface this app (and journal/ledger/tally/agent) should reuse. That is framework issue
+   **#142** (re-scoped: the framework should *provide* the shared `serve` / top-level `status`
+   / `service install|uninstall` surface, keep an extension point for app-specific subcommands
+   and for app-specific `status` fields, and un-hardcode the start args — see the issue).
+   Until #142 lands, the interim app-side shape is: a flat clap enum (reusing the framework's
+   `RunArgs` for `serve`, the framework's `Status` semantics for `status`, and
+   `ServiceCommand::{Install, Uninstall}` for the service group) plus a
+   `SpawnConfig { args: vec!["serve".into()], ..Default::default() }` passed explicitly (the
+   fields are pub, so the on-demand spawn path works today). The installed unit's
+   `ExecStart = <exe> serve` is the one path blocked on #142 (or the enum temporarily mirrors
+   the hardcode — decide at Task 2 start depending on #142's merge order).
 4. **This app's server is a daemon.** Unlike journal/ledger (on-demand, idle-exiting
    servers), sapphire-sync's server *is* the product — the dedicated background sync
    service. The plan builds every server with `.idle_exit(None)` (never exit on idle; the
