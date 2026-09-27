@@ -81,7 +81,7 @@ Constraints).
    `serve`/`status`/`service`/`workspace`/`workgroup`/`device` types of its own; it builds an
    `AppServer` and hands every framework command to
    `FrameworkCommand::dispatch(self, server, version)` (the `AppServer` rides along for
-   `serve`/`status`/`service` — building it for a one-shot is cheap and that is the shape
+   `serve`/`status`/`service` — the bridge-less one-shot build is cheap and that is the shape
    the framework's dispatch takes; do not "optimise" it away). `ServiceStatus` comes with
    the framework's `ServiceCommand` and is *included* here. Start-on-demand is gone
    (`SpawnConfig` is gone with it): every one-shot verb either finds the running server or
@@ -273,7 +273,9 @@ A bare invocation and `serve` are the same thing (`FrameworkCommand::Serve` is `
     }
     ```
     `main`: parse; `CTX.init(if matches!(command, Serve|None) { Server } else { Cli })`
-    as the first statement; build the `AppServer` (`server::build().await`); match —
+    as the first statement; build the bridge-less one-shot `AppServer` (`server::build_oneshot()` —
+    the bridge connection belongs to the serve path only, so one-shot verbs never touch the
+    bridge); match —
     `None | Some(App)`… no: a *bare* invocation parses to `app: None` **and**
     `framework: FrameworkCommand::Serve` (the default), so the dispatch is
     `framework.dispatch(server, env!("CARGO_PKG_VERSION"))` for everything the framework
@@ -281,14 +283,16 @@ A bare invocation and `serve` are the same thing (`FrameworkCommand::Serve` is `
     main implements it (any `Err` → eprintln `sapphire-sync: {err}` + exit 1 — the scaffold's plain `Result` main did NOT do this).
   - `cli/src/server.rs`:
     ```rust
-    /// Build this app's server: the bridge connection (connect-only — a host without a
+    /// Build the serve-path server: the bridge connection (connect-only — a host without a
     /// running bridge cannot sync, so `serve` fails with the bridge's own
     /// "no sapphire-bridge is running" message rather than pretending), the
     /// `SyncRuntime` (`new(&CTX, bridge, current_exe, ManagedBy::Service)` — the daemon
     /// is always service-managed), and the app's status rows (Task 3).
-    pub async fn build() -> anyhow::Result<AppServer>;
+    pub async fn build_serve() -> anyhow::Result<AppServer>;
+    /// The bridge-less server one-shot framework verbs dispatch against.
+    pub fn build_oneshot() -> AppServer;
     ```
-    `build()` = `BridgeClient::connect("sapphire-sync", VERSION).await` →
+    `build_serve()` = `BridgeClient::connect(CTX.app_name(), VERSION).await` →
     `Arc::new(SyncRuntime::new(&CTX, bridge, std::env::current_exe()?, ManagedBy::Service))`
     → `AppServer::new(&CTX, VERSION).sync(arc)` (+ `.status_rows(...)` from Task 3).
     `serve` runs it: `FrameworkCommand::Serve` → `server.run().await` — SIGTERM/SIGINT and
