@@ -1,6 +1,12 @@
 ﻿# sapphire-sync App Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax with code blocks per step. Do not skip the "run the test and watch it fail" steps: they are what proves the test exercises the new code.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or subagent-driven-executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax with code blocks per step. Do not skip the "run the test and watch it fail" steps: they are what proves the test exercises the new code.
+>
+> **Revised 2026-09-26** for the framework's merged command system (issues #146/#150,
+> PR #150 = branch tip `5780e0c`): `FrameworkCommand` now provides
+> `serve / status / service / workspace / workgroup / device` flat, start-on-demand is
+> gone, and `workspace init|list|map` is framework-provided. The app CLI shrinks to
+*almost nothing*; this plan was rewritten where it disagreed with the merged framework.
 
 **Goal:** Turn the scaffolded `sapphire-sync` repository into the sync-only reference app:
 the smallest possible app server — a workspace with a replica and nothing else — driven by
@@ -10,35 +16,43 @@ framework's sync stack.
 
 **Architecture:** The app builds on `sapphire-framework-server` like any other app: it
 implements nothing of the replication engine itself. `SyncRuntime` (built by the app with
-`SyncRuntime::new(ctx, bridge_client, exe_path, managed_by)`) owns one `Replica` per synced
-workspace root, registers them with the bridge, and is mounted by `AppServer::sync(...)` —
-which internally mounts `workspace_router_with_sync` + `sync_router`, so the app adds **no
-router of its own**. The CLI follows the ledger pattern: a thin clap parse in `cli/src`
-dispatching to the core crate; one-shot commands reach the running server through
-`IpcBackend::connect` (which runs `ensure_server` internally — the whole spec §2.6
-on-demand story, no CLI-side spawn code). The bridge is a *separate process* on the host
-(the framework's own `sapphire-bridge` app); the app never owns an iroh endpoint.
+`SyncRuntime::new(&CTX, bridge_client, current_exe, ManagedBy::Service)`) owns one `Replica`
+per synced workspace root, registers them with the bridge, and is mounted by
+`AppServer::sync(...)` — which internally mounts `workspace_router_with_sync` +
+`sync_router`, so the app adds **no router of its own** (the only router extension is the
+`status_rows` closure, below). The CLI is a thin clap parse that flattens the framework's
+`FrameworkCommand` beside the app's own (one-variant) subcommand enum and hands the whole
+thing to `FrameworkCommand::dispatch(server, version)`; one-shot commands reach the running
+server over IPC via `connect_or_absent` — **nothing is ever started on demand**: no server
+→ one line + exit 1. The bridge is a *separate process* on the host (the framework's own
+`sapphire-bridge` app, whose CLI has been re-homed onto the same vocabulary by PR #150);
+the app never owns an iroh endpoint.
 
 **Tech Stack:** Rust 2024 (toolchain 1.98.0, pinned in `rust-toolchain.toml`), the
 `sapphire-framework` facade pinned to git branch `feat/p2p-sync-iroh` with
 `default-features = false, features = ["server", "sync", "bridge", "redb-store"]` (the
-scaffold's scaffold lacks `bridge` — `BridgeClient` lives behind it; adding it is Task 2,
-Step 0), clap 4 (derive), tokio 1 (multi-thread, already in the scaffold), anyhow,
+scaffold lacks `bridge` — `BridgeClient` lives behind it; adding it is Task 2, Step 0),
+clap 4 (derive), tokio 1 (multi-thread, already in the scaffold), anyhow,
 tracing + tracing-subscriber (already in the scaffold); dev: tempfile 3.
 
 **Specs (in the framework repository, `docs/superpowers/specs/`):**
 - `2026-09-15-sapphire-sync-design.md` — this application. Read §1–§7 **as modified by the
   2026-09-16 superseding note at the top of that file**: no embedded node; the bridge,
   workgroups, pairing, devices and network config belong to `sapphire-bridge`, not here.
-- `2026-09-16-process-architecture-design.md` — the process model this app plugs into
-  (§2.6 on-demand start, §3 service install, §4 app server, §4.3 the two planes).
+- `2026-09-16-process-architecture-design.md` — the process model; **its decision 5
+  (start-on-demand) is itself superseded** by the command-system spec below: servers are
+  always-on daemons, and one-shot commands never start one.
+- `2026-09-24-app-command-system-design.md` — the command system this app consumes
+  (Phase 1 = PR #146, landed; Phase 2 = the bridge CLI re-homing, landed). Its decisions
+  1–8 are implemented on the branch this repo pins; the app-side migration is *this repo*.
 
-**Depends on:** the framework branch `feat/p2p-sync-iroh` at or past `25a64bc`, where all
-eleven implementation steps are complete and the final review's findings are fixed on the
-branch (`99c62c8` drives the workgroup workspace while the bridge runs — Critical #1;
-`0738a04` reports connected peers; `537cd04` verifies the workgroup before marking an owner
-online). The branch stays unmerged to `main` on purpose: this repo pins the branch as a git
-dependency until the framework releases v0.1.0, then re-pins to the tag (see Global
+**Depends on:** the framework branch `feat/p2p-sync-iroh` at or past `5780e0c` (PR #150,
+which merges PR #146: the flat `FrameworkCommand`, the typed `StatusReport`,
+`workspace init/list/map` over the app server's IPC, SIGTERM/SIGINT handling in
+`AppServer::run`, removal of start-on-demand, and the bridge CLI re-homing — on top of the
+P2P sync steps: `99c62c8` Critical #1, `0738a04` connected peers, `537cd04` workgroup
+verification). The branch stays unmerged to `main` on purpose: this repo pins the branch as
+a git dependency until the framework releases v0.1.0, then re-pins to the tag (see Global
 Constraints).
 
 **Start from:** scaffold commit `ac6a695` on `main` (root workspace with `default-members
@@ -53,66 +67,83 @@ Constraints).
    logic). The command surface of spec §2 is unchanged otherwise.
 2. **The node model is superseded** (the note at the top of the spec): no node directory,
    no holder/follower lock, no `net.toml`, no `node status` / `node log`, and no
-   `post_install` step (process-architecture spec §3 has no post-install step for this app;
-   `AppServer::service_spec()` builds the spec and there is no app-side extra to inject).
-   What remains of §2 for this app: `serve` (bare invocation means the same), `init <path>`,
-   a top-level `status` (server liveness + what this host syncs), `sync enable|map|disable`,
-   and `service install|uninstall` (see Deviation 3).
-3. **Flat command surface: `serve`, top-level `status`, `service install|uninstall`.** The
-   command surface is flat, not nested under a `server` group: `serve` runs the sync server
-   as a daemon (bare invocation means the same), a top-level `status` reports server
-   liveness plus what this host syncs, and `service install | uninstall` manage the unit.
-   There is **no `stop` command in this app**: the server is a daemon, so stopping it is the
-   service manager's job (`systemctl --user stop` today; a framework-side
-   `service start|stop|restart` set is a known gap — framework issue **#142**). The
-   framework's IPC graceful-stop (`ServerCommand::Stop`, the `server.shutdown` method) is
-   deliberately not exposed here. `status` is app-side and composes both halves: it connects
-   **without spawning** (`SpawnConfig::disabled()` semantics) — not running → a message and
-   **exit code 1** (same semantics as the framework's `ServerCommand::Status`); running →
-   prints the `sync.status` result (enabled/id/peers/paused) plus version/pid/managed_by.
-   Mechanically: the framework today nests these under a `server` group and hard-codes the
-   `["server", "run"]` start args (`AppServer::service_spec()` unit `ExecStart`,
-   `SpawnConfig::default().args`) — it does *not* yet expose them as the flat, shared command
-   surface this app (and journal/ledger/tally/agent) should reuse. That is framework issue
-   **#142** (re-scoped: the framework should *provide* the shared `serve` / top-level `status`
-   / `service install|uninstall` surface, keep an extension point for app-specific subcommands
-   and for app-specific `status` fields, and un-hardcode the start args — see the issue).
-   Until #142 lands, the interim app-side shape is: a flat clap enum (reusing the framework's
-   `RunArgs` for `serve`, the framework's `Status` semantics for `status`, and
-   `ServiceCommand::{Install, Uninstall}` for the service group) plus a
-   `SpawnConfig { args: vec!["serve".into()], ..Default::default() }` passed explicitly (the
-   fields are pub, so the on-demand spawn path works today). The installed unit's
-   `ExecStart = <exe> serve` is the one path blocked on #142 (or the enum temporarily mirrors
-   the hardcode — decide at Task 2 start depending on #142's merge order).
-4. **This app's server is a daemon.** Unlike journal/ledger (on-demand, idle-exiting
-   servers), sapphire-sync's server *is* the product — the dedicated background sync
-   service. The plan builds every server with `.idle_exit(None)` (never exit on idle; the
-   watcher and live sessions are the point of the process) and
-   `.managed_by(ManagedBy::Service)` (a CLI one-shot may still start it —
-   `SpawnConfig::default()` keeps `allow_spawn: true` — but it then persists, so a client
-   must not shut it down).
-5. **`init <path>` takes no `--name`** (the superseded spec's `share_workspace(name)` is
-   gone): the workgroup display name is derived from the directory's file name by the
-   bridge at registration time (framework `control.rs::register`), so a flag here would
-   silently lie. `init` creates the directory, the `.sapphire-sync/` marker, and the
-   comment-only `.sapphireignore` template — and nothing else. The `sync-id` file is minted
-   by `SyncRuntime::enable` (via `sync::id::sync_id`, which creates a fresh `GrainId` on
-   first enable) or written by `SyncRuntime::map` (the workgroup's id); `init` never touches
-   it, so a fresh `init` + `enable` is safe *before* a workgroup exists, and `map` later
-   refuses to silently rewrite a different id already on disk.
-6. **Superseded E2E scenarios.** Old ③ (takeover) is the bridge's own
-   wake-on-sync/lock behaviour, tested in the framework; old ⑤ (hosting other apps'
-   workspaces) and old ⑥ (standalone `sync` one-shot) are removed by the 2026-09-16 note
-   (a host wanting an opaque copy of other apps' files uses rsync or git; sync is driven by
-   the running server, live). What this app's E2E keeps: ① pair & propagate, ② conflict
-   copy, ③ missing-root guard, ④ filtering & size limit.
-7. **E2E harness runs in-process, like the framework's own harnesses**
-   (`crates/sapphire-framework-server/tests/common/mod.rs`): each simulated host is a real
-   in-process `Bridge` (from `sapphire-framework-bridge`) plus a real `AppServer`, two hosts
-   joined over one `LoopbackNetwork`. Spawning real processes per host does not work with
-   one process-global runtime dir (the framework's harness comment says why); the
-   `SAPPHIRE_BRIDGE_DIR` / static-peer-`net.toml` harness from the old spec belonged to the
-   superseded node model.
+   `post_install` step (the installed unit is `AppServer::service_spec()`'s, whose
+   `args: ["serve"]` is now hard-coded by the framework itself — the former "hardcoded
+   `["server", "run"]"` deviation is closed by #142). What remains of §2 for this app:
+   `serve` (bare invocation means the same — `FrameworkCommand::Serve` is `#[default]`),
+   a top-level `status` (framework-rendered, app rows injected), `service install|uninstall`
+   (the framework's `ServiceCommand`; `stop` is dropped per command-system decision 4 —
+   stopping is the service manager's job; the framework now also provides `service status`
+   and the app takes it for free), and the workspace verbs (Deviation 5).
+3. **The command surface is the framework's, not the app's.** `FrameworkCommand`
+   (`Serve | Status | Service | Workspace | Workgroup | Device`) is flattened into the app's
+   clap parser beside the app's own single subcommand (Deviation 6). The app defines **no**
+   `serve`/`status`/`service`/`workspace`/`workgroup`/`device` types of its own; it builds an
+   `AppServer` and hands every framework command to
+   `FrameworkCommand::dispatch(self, server, version)` (the `AppServer` rides along for
+   `serve`/`status`/`service` — building it for a one-shot is cheap and that is the shape
+   the framework's dispatch takes; do not "optimise" it away). `ServiceStatus` comes with
+   the framework's `ServiceCommand` and is *included* here. Start-on-demand is gone
+   (`SpawnConfig` is gone with it): every one-shot verb either finds the running server or
+   prints "no sapphire-sync server is running" and exits 1.
+4. **This app's server is a daemon.** Unlike journal/ledger (historically on-demand,
+   idle-exiting servers), sapphire-sync's server *is* the product — the dedicated background
+   sync service. The framework now hard-wires this: `AppServer::run` no longer idles out and
+   always reports `ManagedBy::Service` (the `managed_by` builder method is gone); the app
+   passes `ManagedBy::Service` to `SyncRuntime::new` to match. A CLI one-shot never starts
+   the daemon (Deviation 3), so "started by a client" is no longer a state at all.
+5. **`init`/`map` are the framework's `workspace` verbs; the app has no init.** The
+   framework's `WorkspaceCommand::{Init { dir: Option<PathBuf>, sync: bool }, List, Map}`
+   covers the whole surface (command-system decisions 1/6/7): `workspace init [dir]
+   [--sync]` runs **on the app server over IPC** (the server's `workspace.init` handler
+   creates the `.sapphire-sync/` marker idempotently and the marker-`config.toml` registry
+   entry; `--sync` rides the same connection's `sync.enable`, which mints the `sync-id`
+   GrainId and publishes the workspace into the workgroup ledger), and `workspace map
+   <selector> [dir]` resolves the selector against the bridge ledger and writes the id via
+   `sync.map`. The registry id is the root's slugified directory name — a *different*
+   identifier from the sync-id; the two-layer naming (registry: dir-slug, sync: GrainId)
+   stays as the framework defines it. Two consequences for this app:
+   - **No app-side `init` command and no app core init logic.** The old plan's
+     `core::init` (marker + template, app-side) is gone; the marker and registry are the
+     server's.
+   - **The `.sapphireignore` template is dropped** (the framework's `init` does not write
+     it, and an app-side hook for it no longer exists; `SyncFilter::load` treats a missing
+     ignore file as "no filter", which is correct behaviour). If the template is wanted
+     later it belongs in the framework's `workspace.init` handler — a framework-side
+     follow-up, not this app's business.
+6. **`sync disable` is the app's only own command.** The framework's `WorkspaceCommand` has
+   `init | list | map` but no *unmap/disable* verb (the `sync.disable` IPC method exists;
+   the CLI verb does not), so the app ships exactly one app-specific subcommand:
+   `sync disable` (stop syncing the resolved workspace; files and sync-id stay, re-enabling
+   rejoins the same workspace — the `SyncRuntime::disable` semantics). It is a thin
+   `sync.disable` IPC call. If the framework later absorbs a `workspace unmap`-style verb
+   (a Phase-3-style sweep), this variant is deleted. A workspace is *enabled* by
+   `workspace init --sync` (idempotent — on an already-initialised directory it reports
+   "already exists" and still runs `sync.enable`).
+7. **`status` is one framework-rendered report.** The app does not print its own status:
+   the framework's `Status` renders `StatusReport { running, version, pid, managed_by, app }`
+   (not running → one line + exit 1; running → the framework rows then `StatusRow` lines).
+   The app injects its per-workspace rows via `AppServer::status_rows(Arc<dyn Fn() ->
+   Vec<StatusRow> + Send + Sync>)`: one row per synced root — name = root directory name,
+   value = `synced as <id>, N peer(s)` / `not synced`, `paused: <reason>` appended when set.
+   Mechanically: the closure is sync but `SyncRuntime::roots()`/`status()` are async, so the
+   implementation wraps them in `tokio::task::block_in_place` (the app's runtime is
+   multi-thread). Rows show on every `status` while the server runs; a not-running server
+   skips them (there is no server to ask).
+8. **Superseded E2E scenarios.** Old ③ (takeover) is the bridge's own
+   wake-on-sync/lock behaviour, tested in the framework (and the harness below keeps
+   `wake_on_sync: false` for exactly that reason); old ⑤ (hosting other apps' workspaces)
+   and old ⑥ (standalone `sync` one-shot) are removed by the 2026-09-16 note. What this
+   app's E2E keeps: ① pair & propagate, ② conflict copy, ③ missing-root guard,
+   ④ filtering & size limit.
+9. **E2E harness runs in-process, like the framework's own harnesses**
+   (`crates/sapphire-framework-server/tests/common/mod.rs`, which this repo's harness models
+   itself on): each simulated host is a real in-process `Bridge` (from
+   `sapphire-framework-bridge`) plus a real `AppServer`, two hosts joined over one
+   `LoopbackNetwork`. Spawning real processes per host does not work with one process-global
+   runtime dir (the framework harness's own comment says why: `SAPPHIRE_RUNTIME_DIR` is one
+   variable in one environment); per host the harness builds `BridgeDir::at(host_dir)` +
+   per-host `Endpoint::in_dir(…, host_run_dir)` pairs instead.
 
 ## Global Constraints
 
@@ -121,20 +152,21 @@ Constraints).
 - CI runs `cargo fmt --all -- --check`, `cargo clippy --all-targets --all-features --
   -D warnings`, `cargo test --all-features --locked`, and the dependency guard:
   `cargo tree -p sapphire-sync -i sapphire-framework-retrieve` must output **nothing**
-  (the scaffold's feature list — `server` (implies `backend`+`workspace`), `sync`,
-  `bridge`, `redb-store` — already guarantees it; the check is the guard).
+  (the feature list — `server` (implies `backend`+`workspace`), `sync`, `bridge`,
+  `redb-store` — already guarantees it; the check is the guard).
 - The framework dependency stays `{ git = "…/sapphire-framework", branch =
   "feat/p2p-sync-iroh", default-features = false, … }` until that branch merges and releases
   v0.1.0, then re-pins to the tag — the only allowed change to the dependency line (and it
   touches `Cargo.lock` in the same commit).
 - `AppContext` is `&'static` everywhere: `pub static CTX: AppContext =
   AppContext::new("sapphire-sync");` in the core crate; `CTX.init(kind)` is the *first
-  statement of `main`* (first writer wins: `AppKind::Server` in the server path,
-  `AppKind::Cli` in one-shot invocations). App name `sapphire-sync` ⇒ marker `.sapphire-sync/`
-  and env override `SAPPHIRE_SYNC_DIR`.
+  statement of `main` after parsing* (first writer wins: `AppKind::Server` for the bare /
+  `serve` path, `AppKind::Cli` for one-shot invocations). App name `sapphire-sync` ⇒ marker
+  `.sapphire-sync/` and env overrides `SAPPHIRE_SYNC_{CACHE,DATA,CONFIG}_DIR`.
 - Exit codes: 0 success; 1 runtime error (any `Err` out of `main`, printed as
-  `sapphire-sync: {err}` to stderr — the scaffold's `main` shape already does this); 2 usage
-  error (clap's default — do not override).
+  `sapphire-sync: {err}` to stderr — the scaffold's `main` shape already does this) and also
+  the framework dispatch's own `Ok(1)` cases (server-not-running); 2 usage error (clap's
+  default — do not override).
 - Every public item in the core crate carries a doc comment; `#![warn(missing_docs)]` on
   `sapphire-sync-core`.
 
@@ -142,232 +174,215 @@ Constraints).
 
 ```
 cli/                              # package `sapphire-sync` (bin, thin dispatch)
-  src/main.rs                     # CTX.init first, clap parse, dispatch
-  src/server.rs                   # the AppServer: build (bridge+runtime), dispatch ServerCommand
-  src/sync.rs                     # sync enable|map|disable (write) + top-level status (read)
-  src/init.rs                     # `init <path>` → core::init (arg parsing only)
+  src/main.rs                     # CTX.init first, clap parse (AppCommand + flattened
+                                  # FrameworkCommand), dispatch
+  src/server.rs                   # AppServer build: BridgeClient::connect → SyncRuntime::new
+                                  # → AppServer::new().sync().status_rows()
+  src/sync.rs                     # the one app command (`sync disable`) + the status rows fn
   tests/cli_parse.rs              # the whole command surface parses; bare = serve
+  tests/serve.rs                  # serve/status smoke test (in-process server)
+  tests/cli_sync.rs               # disable + status rows against a StubBridge-backed server
   tests/e2e/common/mod.rs         # the two-host harness
-  tests/e2e/propagate.rs          # scenario ① (also ② conflict, ④ filtering)
+  tests/e2e/propagate.rs          # scenario ①
+  tests/e2e/conflict.rs           # scenario ②
   tests/e2e/missing_root.rs       # scenario ③
+  tests/e2e/filtering.rs          # scenario ④
 crates/sapphire-sync-core/
   src/lib.rs                      # #![warn(missing_docs)], pub use framework, CTX
-  src/init.rs                     # marker + template + idempotency (no marker-dir state beyond these)
-  tests/init.rs                   # init unit tests (EnvGuard pattern)
+  tests/context.rs                # CTX/env test (EnvGuard pattern)
 ```
 
 ---
 
-### Task 1: Core crate — context, init, re-exports
+### Task 1: Core crate — context and re-exports
 
 **Files:**
 - Modify: `crates/sapphire-sync-core/src/lib.rs`
-- Create: `crates/sapphire-sync-core/src/init.rs`
-- Test: `crates/sapphire-sync-core/tests/init.rs`
+- Test: `crates/sapphire-sync-core/tests/context.rs`
 
 **Interfaces:**
-- Consumes: `sapphire_framework::workspace::{AppContext, AppKind, Workspace, WorkspaceArgs}`
-  and the scaffold's dependency list (Task 1 does *not* yet need `bridge`; leave it for
-  Task 2's Step 0 so this task's diff stays reviewable).
+- Consumes: `sapphire_framework::workspace::{AppContext, AppKind}` (and the facade rides
+  along as a re-export; Task 1 does *not* yet need the `bridge` feature — Task 2's Step 0
+  adds it so this task's diff stays reviewable).
 - Produces:
   - `sapphire_sync_core::CTX: AppContext` — `pub static CTX: AppContext = AppContext::new("sapphire-sync");`
-  - `sapphire_sync_core::init::init(path: &Path) -> anyhow::Result<()>` — create `path` if
-    missing (`create_dir_all`), create `path/.sapphire-sync/` (idempotent), write the
-    comment-only `.sapphireignore` template **only if none exists**; never touches
-    `sync-id`, never calls `Workspace::from_root*` (the workspace *store* opens when the
-    server enables sync, not here).
-  - `sapphire_sync_core::init::TEMPLATE: &str` — the template body, a comment-only file:
-    what the file does, that it uses gitignore syntax, that it is synced to every device,
-    and the two commented-out examples `# *.tmp` and `# node_modules/`.
   - `sapphire_sync_core` re-exports: `pub use sapphire_framework as framework;` (the CLI
     depends on the core crate only; the facade rides along).
+  - No `init.rs`: the marker + registry are the framework server's `workspace.init`
+    handler's (Deviation 5).
 
-- [ ] **Step 1: Write the failing tests.** `tests/init.rs`, env-guarded exactly like the
-      framework's `sync/methods.rs` tests (a `static CTX` for this app, a `Mutex` serialising
-      env, an `EnvGuard` restoring `SAPPHIRE_SYNC_{CACHE,DATA,CONFIG}_DIR` on drop —
-      copy that pattern, `unsafe` set/remove under the one lock). Tests, each on a fresh
-      `tempfile::TempDir`:
-      1. `init` creates the directory when it is missing, creates `.sapphire-sync/`, and
-         writes a `.sapphireignore` containing `# ` lines and the two example patterns.
-      2. `init` twice is a no-op: same marker exists, no error, the template is not rewritten.
-      3. a pre-existing `.sapphireignore` is left byte-identical (write `*.bak\n` first).
-      4. a second `init` at a path under an existing workspace errors (the marker would be
-         nested): document-and-assert the actual `Workspace`/marker behaviour you implement
-         — `init` must at minimum not overwrite the outer workspace's marker.
-- [ ] **Step 2: Run, watch them fail:** `cargo test -p sapphire-sync-core` (unresolved
-      imports `init`/`CTX`).
-- [ ] **Step 3: Implement** `CTX`, `init.rs` per the interface above (a dozen lines:
-      `create_dir_all` twice, `if !template_path.exists() { fs::write(...) }`, anyhow
-      contexts naming every path). Re-export the facade in `lib.rs`.
-- [ ] **Step 4: Run, watch them pass; then** `cargo clippy --all-targets --all-features -- -D warnings`
-      and `cargo fmt --all -- --check` clean.
-- [ ] **Step 5: Commit** — `git add crates/sapphire-sync-core && git commit -m "feat: workspace context and init (marker, template ignore file, idempotency)"`.
+- [ ] **Step 1: Write the failing test.** `tests/context.rs`, env-guarded exactly like the
+      framework's `sync/methods.rs` tests (a `Mutex` serialising the env, an `EnvGuard`
+      restoring `SAPPHIRE_SYNC_{CACHE,DATA,CONFIG}_DIR` on drop — copy that pattern,
+      `unsafe` set/remove under the one lock). One test: with the three env vars pointing at
+      a fresh `tempfile::TempDir` tree, `CTX.init(AppKind::Cli)` resolves `cache_dir`,
+      `data_dir` and `config_dir` to those directories (this is what makes every test binary
+      in this repo single-CTX-safe).
+- [ ] **Step 2: Run, watch it fail** (`CTX` unresolved).
+- [ ] **Step 3: Implement** `CTX` + the facade re-export; passing;
+      `cargo clippy --all-targets --all-features -- -D warnings` and `cargo fmt --all --check` clean.
+- [ ] **Step 4: Commit** — `git add crates/sapphire-sync-core && git commit -m "feat: app context and facade re-export"`.
 
 ---
 
-### Task 2: The server — `serve`, top-level `status`, mounted sync
+### Task 2: The CLI shell + the server — `serve`, `status`, mounted sync
 
-**Command surface (Deviation 3, flat, no `server` group, no separate `stop`):**
-`sapphire-sync` bare invocation and `sapphire-sync serve` both run the server as a
-long-lived daemon. `sapphire-sync status` reports server liveness (plus what this host
-syncs — see Task 3, which folds sync state into the same top-level `status`). There is **no
-`stop` command in this app**: the server is a daemon, so stopping it is the service
-manager's job (`systemctl --user stop` until framework #142 adds `service stop`); the
-framework's IPC graceful-stop (`ServerCommand::Stop`) is deliberately not exposed here.
-The service-manager commands are `service install` / `service uninstall` (the framework
-`ServiceCommand` minus `stop`; a `service start|stop|restart` set is deferred to #142).
+**Command surface (Deviation 3):** everything except `sync disable` is the framework's.
+A bare invocation and `serve` are the same thing (`FrameworkCommand::Serve` is `#[default]`).
 
 **Files:**
 - Modify: `cli/Cargo.toml` (add `bridge` to the framework features; add dev-dependency
-  `sapphire-framework-server` on the *same git source* with `features = ["test-util"]` —
-  the facade does not expose `test-util`, so the StubBridge comes from the crate directly)
+  `sapphire-framework-server` on the *same git source* with `default-features = false,
+  features = ["test-util"]` — the facade does not expose `test-util`, so `StubBridge` comes
+  from the crate directly)
 - Modify: `cli/src/main.rs`
 - Create: `cli/src/server.rs`
-- Test: `cli/tests/cli_parse.rs`
+- Test: `cli/tests/cli_parse.rs`, `cli/tests/serve.rs`
 
 **Interfaces:**
-- Consumes: `CTX` from Task 1; the framework facade: `server::{AppServer, ServerCommand, RunArgs, spawn_config_for}`,
-  `service::ServiceCommand` (`Install | Uninstall` — `Stop`/`Status` unused here),
-  `server::sync::SyncRuntime` (`new(ctx, bridge, exe_path, managed_by)` — registers on
-  enable; `enable` dials immediately), `bridge::BridgeClient` (`connect(kind, version,
-  &SpawnConfig) -> Result<BridgeClient>`, connecting to `Endpoint::for_bridge()`),
-  `ipc::{Endpoint, ManagedBy, SpawnConfig}`, `workspace::args::WorkspaceArgs`.
+- Consumes: `CTX` from Task 1; the facade's prelude (`server` feature re-exports
+  `AppServer`, `FrameworkCommand`, `WorkspaceHost`, …): `FrameworkCommand`
+  (`Serve | Status | Service(ServiceCommand) | Workspace | Workgroup | Device`,
+  `dispatch(self, server, version)`), `sapphire_framework_server::{SyncRuntime, StatusRow}`,
+  `sapphire_framework_bridge::BridgeClient` (`connect(kind, version)` — connect-only,
+  `Error::NotRunning` when the bridge is absent: the daemon refuses to run sync-less, see
+  below), `sapphire_framework_ipc::Endpoint`, `sapphire_ipc::ManagedBy`,
+  `workspace::{AppContext, AppKind, WorkspaceArgs}`, `service::ServiceCommand` (via the
+  flattened `FrameworkCommand`).
 - Produces:
-  - `cli/src/main.rs` `Cli`:
+  - `cli/src/main.rs` `Cli` — the two-field shape the command-system spec's decision 2
+    prescribes:
     ```rust
     #[derive(Parser)]
     #[command(name = "sapphire-sync", version, about = "…")]
     struct Cli {
+        /// The app's own verbs (Deviation 6: just `sync`).
+        #[command(subcommand)]
+        app: Option<AppCommand>,
+        /// serve / status / service / workspace / workgroup / device.
+        #[command(flatten)]
+        framework: FrameworkCommand,
         #[command(flatten)]
         workspace: WorkspaceArgs,           // global --workspace-dir
-        #[command(subcommand)]
-        command: Option<Command>,
     }
     #[derive(Subcommand)]
-    enum Command {
-        /// Run the sync server as a daemon (a bare invocation means the same).
-        Serve(RunArgs),           // framework RunArgs reused verbatim
-        /// Report whether the server runs and what this host syncs.
-        Status,
-        /// Manage the daemon with the OS service manager.
+    enum AppCommand {
+        /// Workspace sync controls: `sync disable`.
         #[command(subcommand)]
-        Service(ServiceCommand),  // framework type: Install | Uninstall (no Stop/Status here)
-        Init { /* Task 1 */ },
-        Sync { #[command(subcommand)] command: SyncCommand },   // Task 3
+        Sync(SyncCommand),
     }
     ```
-    This is an **app-local flat enum** (Deviation 3): `Serve`/`Status`/`Service` are mapped
-    1:1 onto the framework's `ServerCommand::{Run, Status, Service}` before dispatch (the
-    framework `RunArgs` and `ServiceCommand` types are reused verbatim; only the clap
-    surface and the missing `Stop` differ). `main`:
-    `CTX.init(match command { Some(Serve(_))|None => Server, _ => Cli })`, then map the app
-    `Command` into a framework `ServerCommand` and `server::dispatch(framework_cmd).await`.
+    `main`: parse; `CTX.init(if matches!(command, Serve|None) { Server } else { Cli })`
+    as the first statement; build the `AppServer` (`server::build().await`); match —
+    `None | Some(App)`… no: a *bare* invocation parses to `app: None` **and**
+    `framework: FrameworkCommand::Serve` (the default), so the dispatch is
+    `framework.dispatch(server, env!("CARGO_PKG_VERSION"))` for everything the framework
+    owns, and `sync::dispatch(...)` only for `AppCommand::Sync(_)`; exit-code handling as
+    the scaffold's `main` already does (any `Err` → `sapphire-sync: {err}` + exit 1).
   - `cli/src/server.rs`:
     ```rust
-    /// Build this app's server: bridge connection + SyncRuntime, `idle_exit(None)`
-    /// (this app is a daemon — Deviation 4), `managed_by(Service)`, and a SpawnConfig
-    /// whose args are `["serve"]` for on-demand starts (fields are pub; Deviation 3).
+    /// Build this app's server: the bridge connection (connect-only — a host without a
+    /// running bridge cannot sync, so `serve` fails with the bridge's own
+    /// "no sapphire-bridge is running" message rather than pretending), the
+    /// `SyncRuntime` (`new(&CTX, bridge, current_exe, ManagedBy::Service)` — the daemon
+    /// is always service-managed), and the app's status rows (Task 3).
     pub async fn build() -> anyhow::Result<AppServer>;
-    /// Map the app's flat command onto a framework ServerCommand and run it.
-    pub async fn dispatch(command: ServerCommand) -> anyhow::Result<i32> {
-        let server = build().await?;
-        Ok(command.dispatch(server, "sapphire-sync", env!("CARGO_PKG_VERSION")).await?)
-    }
     ```
-    `build()` = `BridgeClient::connect("sapphire-sync", VERSION, &spawn_config())` (spawn
-    args `["serve"]` per Deviation 3) → `SyncRuntime::new(&CTX, Arc::new(bridge),
-    std::env::current_exe()?, ManagedBy::Service)` → `AppServer::new(&CTX,
-    VERSION).managed_by(ManagedBy::Service).idle_exit(None).sync(arc)`.
-    The bare/`serve` path *is* `dispatch(Run(RunArgs{ foreground: _ }))`; because this app
-    always sets `idle_exit(None)`, the `--foreground` flag is a no-op here (note it).
-- Note in the doc comment that `Status`/`Service` dispatch builds the whole server (cheap)
-  because the framework's `ServerCommand::dispatch` reads the spec off the `AppServer` — so
-  the next reader does not "optimise" it away.
+    `build()` = `BridgeClient::connect("sapphire-sync", VERSION).await` →
+    `Arc::new(SyncRuntime::new(&CTX, bridge, std::env::current_exe()?, ManagedBy::Service))`
+    → `AppServer::new(&CTX, VERSION).sync(arc)` (+ `.status_rows(...)` from Task 3).
+    `serve` runs it: `FrameworkCommand::Serve` → `server.run().await` — SIGTERM/SIGINT and
+    the IPC stop channel are handled inside `run()` (the app installs nothing).
+- The serve smoke test also proves the two things the framework guarantees: a bare
+  invocation *parses* to `Serve`, and `status` against a running in-process server prints
+  `running: true` + pid and exits 0 (the app rows themselves are Task 3's test).
 
-- [ ] **Step 0:** add `bridge` to the framework features in `cli/Cargo.toml` and the
-      `sapphire-framework-server` dev-dependency (same git source, branch pin,
-      `default-features = false`, `features = ["test-util"]`); `cargo check` passes.
-- [ ] **Step 1: Write the failing parse test** `cli/tests/cli_parse.rs`, modelled on the
-      framework's `command::tests::the_subcommands_parse` (export `Cli`/`Command` from the
-      bin crate via a `cli` module compiled as both bin and test; parse via
-      `Cli::try_parse_from`): bare `["sapphire-sync"]` → `None`; `["sapphire-sync",
-      "serve"]`, `… "serve", "--foreground"`, `… "status"`, `… "service", "install"`,
-      `… "service", "uninstall"` all parse; `--workspace-dir /tmp/x` accepted globally.
+- [ ] **Step 0:** add `bridge` to the framework features and the `sapphire-framework-server`
+      dev-dependency (same git source, branch pin, `default-features = false`,
+      `features = ["test-util"]`); `cargo check` passes.
+- [ ] **Step 1: Write the failing parse test** `cli/tests/cli_parse.rs` (export `Cli`/
+      `AppCommand`/`SyncCommand` from the bin crate; modelled on the framework's
+      `command::tests::the_subcommands_parse`): bare `["sapphire-sync"]` → `app: None` +
+      `framework` is `Serve`; `["sapphire-sync", "serve"]`; `"status"`; `"service", "install",
+      "--user"`; `"service", "uninstall"`; `"service", "status"`; `"workspace", "init"`,
+      `"workspace", "init", "notes"`, `"workspace", "init", "--sync"`; `"workspace", "list"`;
+      `"workspace", "map", "notes", "/srv/notes"`; `"workgroup", "list"`; `"device", "list"`;
+      `"sync", "disable"`; global `--workspace-dir /tmp/x` everywhere; and a parse collision
+      check that the app's `sync` and the framework's `workspace` groups coexist.
 - [ ] **Step 2: Watch it fail** (`cargo test -p sapphire-sync --test cli_parse`).
-- [ ] **Step 3: Implement** `main.rs` (dispatch shape above; the `Init`/`Sync` arms dispatch
-      to functions delivered by Tasks 1/3 — land this task *after* 1 or stub their arms with
-      `anyhow::bail!("not implemented")` **only if** Task 3 has not landed; order the work
-      1 → 3 → 2 if needed) and `server.rs` (the two functions above). One smoke integration
-      test `cli/tests/serve.rs`: point `SAPPHIRE_SYNC_CACHE_DIR/_DATA_DIR/_CONFIG_DIR` and
-      the IPC runtime dir at a temp dir (set `SAPPHIRE_RUNTIME_DIR` per the env-guard
-      pattern), spawn `build()` in a task, `wait_until_listening` (poll `sapphire_ipc::probe`,
-      pattern from the framework's `sync_wiring.rs`), assert the top-level `status` command
-      reports it running (exit 0), then tear the server down.
-- [ ] **Step 4: All green; fmt + clippy clean; commit** — `"feat: embedded app server (serve, status, mounted SyncRuntime)"`.
+- [ ] **Step 3: Implement** `main.rs` (shape above; the `Sync` arm dispatches to Task 3's
+      `sync::dispatch` — land Task 3 first or stub its arm) and `server.rs` (as above).
+      One smoke integration test `cli/tests/serve.rs`: set `SAPPHIRE_SYNC_{CACHE,DATA,
+      CONFIG}_DIR` and `SAPPHIRE_RUNTIME_DIR` to a temp tree (env-guard pattern; the
+      framework's `endpoint.rs` `EnvGuard`/`run_with_env` shows the shape), build the server
+      with `.endpoint(Endpoint::for_app("sapphire-sync")?)` implied by the env (no explicit
+      endpoint), spawn `server.run()` in a task, wait until `sapphire_ipc::probe` says the
+      socket is listening (poll with a deadline — a fast first probe is not a failure), then
+      run `FrameworkCommand::Status.dispatch(...)` in-process and assert exit 0 + output
+      contains `running: true`, then tear the server down (abort the task).
+- [ ] **Step 4: All green; fmt + clippy clean; commit** —
+      `"feat: framework command surface (serve, status, service) + mounted SyncRuntime"`.
+
 ---
 
+### Task 3: `sync disable` + the app's status rows
 
-### Task 3: One-shot CLI — `sync enable | map | disable` (+ top-level `status`)
-
-**Command surface (Deviation 3):** the sync-editing verbs are `enable`, `map`, `disable`.
-There is **no `sync status`** — status is a single top-level command (Task 2's `Status`)
-that composes server liveness *and* this host's sync state, so the CLI here only *writes*
-sync state and the top-level `status` reads it back.
+**Command surface (Deviations 5–7):** enabling/mapping/listing are the framework's
+`workspace` verbs; only *disabling* is the app's own verb. Status is the framework's
+report; the app injects rows.
 
 **Files:**
 - Create: `cli/src/sync.rs`
-- Modify: `cli/src/main.rs` (the `Sync` arm and the top-level `Status` arm)
+- Modify: `cli/src/main.rs` (the `Sync` arm) and `cli/src/server.rs` (attach `status_rows`)
 - Test: `cli/tests/cli_sync.rs`
 
 **Interfaces:**
 - Consumes: `IpcBackend::connect(&Endpoint::for_app("sapphire-sync")?, "sapphire-sync",
-  "cli", VERSION, &SpawnConfig::disabled(), root)` — **connect-only, never spawn** (Deviation
-  3: a CLI verb must not silently start the daemon; if no server is up, `connect` returns the
-  not-running error and `status` exits 1). `backend.client().call::<_, T>(method, params)`
-  for the framework's `backend::protocol::{SYNC_ENABLE, SYNC_DISABLE, SYNC_MAP, SYNC_STATUS,
-  WsParams, SyncMapParams, SyncEnableResult, SyncStatusResult}`; `Workspace::resolve(&CTX,
-  cli.workspace.workspace_dir.as_deref())` to find the root for `enable`/`disable`/`status`
-  (upward `.sapphire-sync/` search, exactly as ledger resolves `--ledger-dir`).
+  "cli", VERSION, root)` — connect-only, never starts anything — then
+  `backend.client().call::<_, Ack>(SYNC_DISABLE, WsParams { ws })`;
+  `Workspace::find_from(&CTX, …)`/`resolve` (the framework's own root resolution, honoring
+  `--workspace-dir` and the upward `.sapphire-sync/` search — the same resolution the
+  server's `workspace.init` uses server-side); `SyncRuntime::roots()` +
+  `SyncRuntime::status(&root) -> SyncStatus { enabled, workspace_id, peers, paused,
+  last_error, bridge_available }` for the rows;
+  `AppServer::status_rows(Arc<dyn Fn() -> Vec<StatusRow> + Send + Sync>)`.
 - Produces:
   ```rust
   pub enum SyncCommand {
-      /// Start syncing the workspace this command resolves to.
-      Enable,
-      /// Stop syncing it. Files and sync-id stay; re-enabling rejoins the same workspace.
+      /// Stop syncing the workspace this command resolves to. Files and sync-id stay;
+      /// re-enabling via `workspace init --sync` rejoins the same workspace.
       Disable,
-      /// Place an existing workgroup workspace at <dir> and sync it.
-      Map {
-          /// The workspace, by name or id, as the workgroup lists it.
-          workspace: String,
-          /// The directory it lives in on this host (must already be a workspace).
-          dir: PathBuf,
-      },
   }
   pub async fn dispatch(command: SyncCommand, root: Option<PathBuf>) -> anyhow::Result<i32>;
-  /// Read side of the top-level `status`: connect-only, then render one SyncStatusResult.
-  pub async fn status(root: Option<PathBuf>) -> anyhow::Result<i32>;
+  /// One row per synced workspace, for `AppServer::status_rows` (Deviation 7:
+  /// `block_in_place` around the async runtime calls).
+  pub fn status_rows(runtime: Arc<SyncRuntime>) -> Arc<dyn Fn() -> Vec<StatusRow> + Send + Sync>;
   ```
-  `map` passes `SyncMapParams { workspace, dir }` verbatim (the server canonicalizes and
-  refuses non-roots/wrong-app ids itself — surface the server's error text, do not
-  re-validate). `status` prints one human-readable block (key: value lines — this is a CLI,
-  no `--json`): it reads the top-level `status` target (version/pid/managed_by come from the
-  liveness probe in Task 2) plus `enabled`/id/`peers`/`paused`; a connected-but-idle host
-  prints `enabled: false` and exits 0. Only a *not-running* server is an error (exit 1).
-  Exit: `Ok(0)` on success; any `Err` propagates to `main` → exit 1.
+  `dispatch` resolves the root, connects (`connect_or_absent` semantics: no server → print
+  + exit 1 — the framework error text already says "no sapphire-sync server is running"),
+  calls `sync.disable`, prints `sync disabled for <root>` and returns 0. Success is exit 0
+  whether or not the root was synced (`SyncRuntime::disable` is idempotent). Any other
+  `Err` propagates to `main` → exit 1.
 
-- [ ] **Step 1: Write the failing tests.** `cli_parse.rs` gains: `sync enable`,
-      `sync disable`, `sync map notes /srv/sync/notes`, and a top-level `status` all parse
-      (including with a global `--workspace-dir`). `cli_sync.rs`: start an in-process server
-      per Task 2's smoke fixture + `sapphire_framework_server::sync::testing::StubBridge`
-      (`StubBridge::start()` gives `(StubBridge, Arc<BridgeClient>)` over a
-      `Connection::pair`), build the server around the runtime, then run the CLI-level
-      dispatch against it: enable a temp workspace → `status` reports `enabled: true` and a
-      workspace id; the stub recorded a registration; `disable` → `enabled: false` (the
-      stub's unregistrations grow); a *second* enable of the same root is a no-op re-register
-      (the framework re-registers the whole set — assert no error and one id).
+- [ ] **Step 1: Write the failing tests.** `cli_parse.rs` already covers parse.
+      `cli_sync.rs`: stand up one in-process host per Task 4's harness shape *minus the
+      bridge* (an `AppServer` with a `SyncRuntime` over `StubBridge::start()` —
+      `sapphire_framework_server::sync::testing::StubBridge`, which yields
+      `(StubBridge, Arc<BridgeClient>)` over a `Connection::pair`); enable a temp workspace
+      via `runtime.enable(&root)`, then: the status-rows fn returns one row containing the
+      id and "1 peer"… (stub answers `peers` with the stub + this host — assert exactly the
+      row text the implementation prints, `synced as <id>, 0 peers` style: the stub's
+      single-node ledger says `peers = 1` ⇒ the row says `0 peers` per the framework's
+      saturating_sub(1) convention — assert what the code says); `disable` via
+      `sync::dispatch` (against the in-process server: dispatch through the *real*
+      `FrameworkCommand` path where feasible, else call `dispatch` against a client built on
+      `connect_or_absent` to the test endpoint) → the stub's `unregistrations` grow and the
+      row flips to "not synced"; re-enable via the `sync.enable` method path the framework's
+      `workspace init --sync` rides → idempotent, no error.
 - [ ] **Step 2: Watch them fail.**
-- [ ] **Step 3: Implement** `sync.rs` (both `dispatch` and `status`) + the `main.rs` arms; passing.
-- [ ] **Step 4: fmt/clippy/tests; commit** — `"feat: sync enable/map/disable + top-level status over the IPC socket"`.
+- [ ] **Step 3: Implement** `sync.rs` + the `main.rs` arm + the `status_rows` wiring; passing.
+- [ ] **Step 4: fmt/clippy/tests; commit** —
+      `"feat: sync disable + app status rows"`.
 
 ---
 
@@ -377,40 +392,41 @@ sync state and the top-level `status` reads it back.
 - Create: `cli/tests/e2e/common/mod.rs`
 - Test: `cli/tests/e2e/propagate.rs`
 
-**What the harness is (Deviation 7):** model it on the framework's
-`crates/sapphire-framework-server/tests/common/mod.rs` (read it first; it already solves
-"two hosts, one process" — one `LoopbackNetwork` shared by two `Arc<Bridge>`s each with its
-own `BridgeDir::at(host_dir)` + `Endpoint::in_dir` control/data endpoints, one shared
-`static CTX: AppContext = AppContext::new("sapphire-sync")` whose per-uuid cache dirs keep
-the hosts' caches apart). Per host: one `Bridge::new(dir, transport, "0.0.0")` run in a
-spawned task, one `AppServer` (built exactly like Task 2's `build()`, but per host:
-`SyncRuntime::new(&CTX, bridge_client, "/bin/true".into(), ManagedBy::Spawned)`), one
-workspace root (`tmp/host{a,b}/notes/` with `.sapphire-sync/sync-id` written identically on
-both hosts before enable — the harness writes the id file directly rather than running the
-CLI, and pins the workspace cache key with `Workspace::from_root_with_uuid(&CTX, root, uuid)`
-so both hosts share one uuid/cache key — **verify** whether the in-process two-host
-fixture needs this before choosing; `sync_id`'s shared file guarantees the id, the uuid
-only names the cache dir — the framework harness comment confirms one scratch
-tree is safe precisely because each workspace cache is keyed by the root path
-(`<cache>/<uuid>/`); **record the verified finding in the harness doc comment**, since
-Task 5 and later readers rely on it). One workgroup: create it once (`Workgroup::create` on host A's
-dir with a fixed `NODE_A` node id; host B joins via the shared directory the same way the
-framework's `adopt_workgroup`/`refresh_workgroup` fixtures do), then
-`SyncRuntime::enable` on both hosts; `enable`'s dial makes the first session immediate.
-Helpers: `write(host, rel, content)`, `poll_until(|| condition, "what")` (10 s timeout,
-25 ms poll — copy from the framework harness; **no sleeps without a condition**).
+**What the harness is (Deviation 9):** model it on the framework's
+`crates/sapphire-framework-server/tests/common/mod.rs` (read it first — it already solves
+"two hosts, one process": one `LoopbackNetwork` shared by two `Bridge`s each with its own
+`BridgeDir::at(host_dir)` and per-host `Endpoint::in_dir(…, host_run_dir)` control/data
+endpoints, one shared `static CTX: AppContext` whose per-test scratch tree is set via
+`CTX.set_cache_dir/set_data_dir/set_config_dir` *before* the first init — first writer
+wins). Per host: one `Bridge::new(dir, net.transport(node_id), VERSION)` with
+`wake_on_sync: false` (the exe a route names would be the test binary), one `AppServer`
+(built exactly like Task 2's `build()` but per host, each with its own `BridgeClient` via
+`BridgeClient::from_client(connect_or_absent(...).1, run_dir)` and its own
+`SyncRuntime::new(CTX, bridge, current_exe, ManagedBy::Service)`), one workspace root
+(`tmp/host{a,b}/notes/` with the `.sapphire-sync/` marker + the same `sync-id` file content
+on both hosts — the harness writes the id file directly rather than running the CLI; the
+registry `config.toml` entry is *not* needed for sync (the sync-id is the sync identity;
+the registry is the CLI's local list) — **record the verified finding in the harness doc
+comment**, since Tasks 5 and later readers rely on it). Cache-key note to verify and record:
+each workspace's cache is `<cache>/<uuid>/` keyed off the *root path*, so two hosts with
+different root paths never collide on one shared tree. One workgroup: `Workgroup::create`
+once on host A's dir with a fixed `NODE_A`, host B joins by copying the ledger like the
+framework's `adopt_workgroup` fixture; then `SyncRuntime::enable` on both hosts (`enable`'s
+dial makes the first session immediate). Helpers: `write(host, rel, content)`,
+`poll_until(|| condition, "what")` (10 s timeout, 25 ms poll — copy from the framework
+harness; **no sleeps without a condition**), `settle`/`quiet` (copy their
+deadline-and-poll shape: they wait for *quiet*, never a fixed window).
 
 **Scenario ①** (`propagate.rs`): enable on both hosts → write a file on A → it appears
-under B's root (poll); modify on B → A converges; delete on A → gone from B. Then the
-same file tree on both sides is the assertion (file-by-file compare of the two roots).
+under B's root (poll); modify on B → A converges; delete on A → gone from B. Then the same
+file tree on both sides is the assertion (file-by-file compare of the two roots).
 
 - [ ] **Step 1:** write the harness + `propagate.rs` (the scenario above, three `poll_until`s).
 - [ ] **Step 2:** run, watch it fail to compile, then fail the first poll.
 - [ ] **Step 3:** implement the harness until the scenario passes:
-      `cargo test -p sapphire-sync --test e2e` — wait, integration-test-per-file means the
-      file is its own test crate (`tests/e2e/propagate.rs` + `mod common` via
-      `#[path = "../e2e/common/mod.rs"] mod common;` if `common` must not become its own
-      test crate — mirror however the framework's `tests/converge.rs` includes `common/`).
+      `cargo test -p sapphire-sync --test propagate` (each test file is its own crate;
+      include the harness with `#[path = "e2e/common/mod.rs"] mod common;` or mirror however
+      the framework's `converge.rs` includes `common/`).
 - [ ] **Step 4:** commit — `"test: two-host e2e harness and propagate scenario"`.
 
 ---
@@ -427,21 +443,21 @@ same file tree on both sides is the assertion (file-by-file compare of the two r
   poll until both roots converge to one winner plus exactly one conflict copy whose name
   matches `a.conflict-<7-char grain-id>-<n>.md` on both hosts (the framework
   `merge::conflict_path` naming: `*.conflict-<grain-id>-<n>.*`).
-- **Missing-root guard:** rename a synced root away on A → A's `sync.status` reports
-  `paused: Some("RootMissing")` (the `PauseReason` Debug form — assert on the *string the
-  CLI prints*, via Task 3's dispatch against the in-process server, or on the
-  `SyncStatus` struct if the harness calls the runtime directly); the peer's files are
-  untouched; rename back; `status.paused` clears and a new file written on B reaches A.
+- **Missing-root guard:** rename a synced root away on A → A's `SyncRuntime::status` reports
+  `paused: Some("RootMissing")` (the `PauseReason` Debug form — asserting on the runtime
+  directly is fine here; the CLI row just prints it); the peer's files are untouched;
+  rename back; `paused` clears and a new file written on B reaches A.
 - **Filtering & limits:** a `.sapphireignore` (created *before* enable on A; it syncs with
-  everything else — assert it exists on B too) excluding `*.tmp` → a `x.tmp` written on A
-  never reaches B; a file larger than `sapphire_framework::sync::DEFAULT_MAX_FILE_SIZE` (64 MiB,
-  re-exported at the sync crate root; the `replica` module itself is private) is
-  skipped (absent on B) while its smaller sibling syncs; `status` shows no pause (skips are
-  silent in `sync.status` — the skipped-file assertions above are the real checks).
+  everything else — assert it exists on B too; `.sapphireignore.conflict-*` copies stay
+  excluded by the built-in rule) excluding `*.tmp` → an `x.tmp` written on A never reaches
+  B; a file larger than `sapphire_framework::sync::DEFAULT_MAX_FILE_SIZE` (64 MiB,
+  re-exported at the sync crate's root; the `replica` module itself is private) is skipped
+  (absent on B) while its smaller sibling syncs; oversized files are *silent* skips — the
+  file-level assertions are the real checks.
 
 - [ ] **Steps per file:** write → watch fail → implement the harness helpers the scenario
-      still needs (e.g. rename-root helper, oversized payload builder:
-      `DEFAULT_MAX_FILE_SIZE + 1` bytes) → passing → fmt/clippy.
+      still needs (rename-root helper, oversized payload builder: `DEFAULT_MAX_FILE_SIZE + 1`
+      bytes) → passing → fmt/clippy.
 - [ ] **Commit** — `"test: conflict, missing-root and filtering e2e scenarios"`.
 
 ---
@@ -451,22 +467,23 @@ same file tree on both sides is the assertion (file-by-file compare of the two r
 **Files:** `README.md`, `README.ja.md`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`.
 
 - [ ] **README (en + ja, cross-linked at the top).** Sections per spec §4 *as revised*:
-      quick start (`sapphire-sync init ~/Documents/notes` → `sapphire-sync sync map notes
-      ~/Documents/notes` → it appears in the bridge's `workspace list` on every device and
-      two-way sync begins); how the pieces fit (this app = the app server + CLI, the
-      `sapphire-bridge` app = the always-on peer and switchboard; one `sapphire-sync serve`
-      per host); `service install` (user units, Linux system units run as the
-      invoking user); `.sapphireignore`; how conflicts appear (the `.conflict-…` copies and
-      why both versions survive); the top-level `status`. Do not assert the
-      bridge app's own command names in prose if they differ — link to the bridge README
-      instead of restating its CLI.
+      quick start (`sapphire-bridge workgroup create --device-name laptop home` and
+      `sapphire-sync workspace init --sync ~/Documents/notes` → the workspace shows in
+      `workspace list` on every device and two-way sync begins; the bridge's own verbs are
+      its README's business — link, do not restate); how the pieces fit (this app = the app
+      server + CLI, the `sapphire-bridge` app = the always-on peer and switchboard; one
+      `sapphire-sync serve` per host, installed by `service install`, stopped by the
+      service manager); `status` output (the framework's rows + this app's per-workspace
+      rows); `.sapphireignore`; how conflicts appear (the `.conflict-…` copies and why both
+      versions survive); the "no server is running" contract (one-shot commands never start
+      the daemon).
 - [ ] **CI:** the four CI commands from Global Constraints as one workflow
       (ubuntu + windows matrix; `cargo tree -p sapphire-sync -i sapphire-framework-retrieve`
       must print nothing — assert empty).
-- [ ] **`CONTRIBUTING.md`:** this repository's rule (two-crate layout `cli/` +
-      `crates/sapphire-sync-core/`, the thin-CLI rule, English code/comments/commits,
-      tests live in `cli/tests/`); link the framework repo's `CONTRIBUTING.md` for the
-      family-wide rules instead of copying them.
+- [ ] **CONTRIBUTING.md:** this repository's rule (two-crate layout `cli/` +
+      `crates/sapphire-sync-core/`, the thin-CLI rule — everything the framework provides
+      stays the framework's, tests live in `cli/tests/`); link the framework repo's
+      `CONTRIBUTING.md` for the family-wide rules instead of copying them.
 - [ ] **Commit** — `"docs: READMEs (en/ja), CI, contributing"`.
 
 ---
@@ -475,4 +492,7 @@ same file tree on both sides is the assertion (file-by-file compare of the two r
 
 Send-only/receive-only folders, file versioning, a web UI, a desktop/tray app (a future
 separate crate), binary release artifacts. Workgroup/device/network commands live in
-`sapphire-bridge`, not here (superseding note, bullet 3).
+`sapphire-bridge` (and reach this app's CLI through the framework's `workgroup`/`device`
+groups, which only forward to the bridge — superseding note, bullet 3). Service
+start/stop/restart abstractions (framework Non-goal), privilege separation config, and any
+per-app status *format* changes (the `StatusReport` shape is the framework's to change).
