@@ -1,16 +1,28 @@
-//! The app's server: bridge connection, sync runtime, `AppServer`.
+//! The app's servers: bridge-less for one-shot verbs, sync-mounted for serve.
 //!
-//! `build()` wires the three pieces the framework leaves to the application:
-//! the bridge connection (connect-only — a host without a running bridge
-//! cannot sync, so `serve` fails with the bridge's own "no sapphire-bridge is
-//! running" message rather than pretending), the `SyncRuntime` (the daemon is
-//! always service-managed), and the `AppServer` itself. The app's status rows
-//! land with Task 3.
+//! Two builders, because the bridge connection belongs to the serve path only
+//! (the review of `0acb194` ruled the one-shot verbs bridge-less):
 //!
-//! `BridgeClient` and `ManagedBy` come from the bridge-api crate: the facade
-//! re-exports the bridge *daemon* crate under `framework::bridge`, not
-//! `-bridge-api`, so the client is only reachable as a direct dependency
-//! (same git source, same branch).
+//! - [`build_oneshot`] hands every one-shot framework verb a bare
+//!   [`AppServer`] — `dispatch` needs only the app name and the service spec,
+//!   and a CLI invocation must not open a bridge or fail with a bridge error.
+//!   A `status` on a host without a server answers the framework's "no
+//!   sapphire-sync server is running" and exits 1; a `workspace init` likewise
+//!   reports the absent server. Neither touches the bridge.
+//! - [`build_serve`] additionally connects the bridge — connect-only, nothing
+//!   starts one on demand (the framework's global constraint), so `serve` on a
+//!   host without a bridge fails with the bridge's own "no sapphire-bridge is
+//!   running" message rather than pretending — and mounts the `SyncRuntime`
+//!   (the daemon is always service-managed) with [`AppServer::sync`]. The
+//!   app's status rows land with Task 3.
+//!
+//! The IPC endpoint, the stop channel and the signals are `run()`'s business
+//! in both paths; the app installs nothing there.
+//!
+//! `BridgeClient` comes from the bridge-api crate: the facade re-exports the
+//! bridge *daemon* crate under `framework::bridge`, not `-bridge-api`, so the
+//! client is only reachable as a direct dependency (same git source, same
+//! branch).
 
 use std::sync::Arc;
 
@@ -18,17 +30,25 @@ use sapphire_bridge_api::{BridgeClient, ManagedBy};
 use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::server::{AppServer, SyncRuntime};
 
-/// Build this app's server: bridge, sync runtime, and the `AppServer` that
-/// owns the workspaces.
+/// The app's server for one-shot verbs: an `AppServer` with nothing mounted.
 ///
-/// Sync is mounted with [`AppServer::sync`]; the IPC endpoint, the stop
-/// channel and the signals are `run()`'s business, so the app installs
-/// nothing there.
-pub async fn build() -> anyhow::Result<AppServer> {
-    // Connect-only: nothing starts a bridge on demand (the framework's global
-    // constraint), so an absent bridge is `Error::NotRunning` and the message
-    // is exactly the bridge's.
-    let bridge = Arc::new(BridgeClient::connect("sapphire-sync", env!("CARGO_PKG_VERSION")).await?);
+/// Every [`FrameworkCommand`] except `Serve` dispatches against this: it reads
+/// `app_name()` (the endpoint to open) and `service_spec()` (what a service
+/// manager starts), and connects to a *running* server over IPC itself. A
+/// bridge-less, sync-less server is exactly what the framework's own status
+/// tests dispatch against.
+pub fn build_oneshot() -> AppServer {
+    AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
+}
+
+/// The app's embedded server: bridge connection, sync runtime, `AppServer`.
+///
+/// Sync is mounted with [`AppServer::sync`]; the runtime is built here because
+/// it needs the bridge connection, which is the caller's to open and to close.
+pub async fn build_serve() -> anyhow::Result<AppServer> {
+    // Connect-only: an absent bridge is the bridge-api's `Error::NotRunning`
+    // and the message is exactly the bridge's.
+    let bridge = Arc::new(BridgeClient::connect(CTX.app_name, env!("CARGO_PKG_VERSION")).await?);
     let runtime = Arc::new(SyncRuntime::new(
         &CTX,
         bridge,
@@ -37,8 +57,3 @@ pub async fn build() -> anyhow::Result<AppServer> {
     ));
     Ok(AppServer::new(&CTX, env!("CARGO_PKG_VERSION")).sync(runtime))
 }
-
-// Reaching `build`'s pieces: `BridgeClient` and `ManagedBy` through the
-// bridge-api crate (the facade does not re-export it), `SyncRuntime` through
-// the facade's `server` module (the framework's own command layer does the
-// same via `sapphire_framework_server`).

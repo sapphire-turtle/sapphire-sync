@@ -10,17 +10,17 @@ use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::server::FrameworkCommand;
 use sapphire_sync_core::framework::workspace::AppKind;
 
-// The parse types live in their own module so the integration tests can link
-// them (`sapphire_sync::cli`): a `[[bin]]`-only package has no library target,
-// so an integration test's `use sapphire_sync::cli::…` links this same module
-// through a `#[path]` include of its own.
+// The parse types live in their own module so the integration tests can reach
+// them: a `[[bin]]`-only package has no library target, so an integration test
+// compiles this module into its own crate through a `#[path]` include of the
+// same file.
 #[path = "cli.rs"]
 pub mod cli;
 
 mod server;
 mod sync;
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     let cli = cli::Cli::parse();
 
     // First statement after parsing: what this process is decides where its
@@ -31,10 +31,23 @@ fn main() -> anyhow::Result<()> {
         _ => AppKind::Cli,
     });
 
-    let runtime = tokio::runtime::Builder::new_multi_thread()
+    let runtime = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .build()?;
-    runtime.block_on(run(cli))
+        .build()
+    {
+        Ok(runtime) => runtime,
+        Err(err) => {
+            eprintln!("sapphire-sync: {err}");
+            std::process::exit(1);
+        }
+    };
+    if let Err(err) = runtime.block_on(run(cli)) {
+        // A plain `Result` main would print `Error: {err:?}` — the app's own
+        // format is the one the plan pins: the program name, the message
+        // (Display, not the Debug dump), exit 1.
+        eprintln!("sapphire-sync: {err}");
+        std::process::exit(1);
+    }
 }
 
 async fn run(cli: cli::Cli) -> anyhow::Result<()> {
@@ -42,21 +55,24 @@ async fn run(cli: cli::Cli) -> anyhow::Result<()> {
     match cli.app {
         // The app's own verbs come first; Task 3 lands the real `sync`
         // dispatch, so the arm is a placeholder until then.
-        Some(cli::AppCommand::Sync(_)) => sync::dispatch(),
-        // Bare invocation and every framework verb.
+        Some(cli::AppCommand::Sync(command)) => sync::dispatch(command),
+        // Every framework verb. One-shots dispatch against a bridge-less
+        // server — `status` on a host without a running server must say the
+        // framework's "no … server is running", not a bridge error — and the
+        // exit code is the process's.
         Some(cli::AppCommand::Framework(command)) => {
-            let server = server::build().await?;
-            let code = command.dispatch(server, version).await?;
+            let code = command.dispatch(server::build_oneshot(), version).await?;
             std::process::exit(code);
         }
-        // The parse default is `Serve` (command-system decision 1): a bare
-        // invocation *is* the framework's server verb.
+        // The parse default is `Serve`: a bare
+        // invocation *is* the framework's server verb, which is the only place
+        // the bridge is opened.
         None => {
-            let server = server::build().await?;
-            FrameworkCommand::default()
+            let server = server::build_serve().await?;
+            let code = FrameworkCommand::default()
                 .dispatch(server, version)
                 .await?;
-            Ok(())
+            std::process::exit(code);
         }
     }
 }

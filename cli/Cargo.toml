@@ -24,8 +24,9 @@ tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
 tempfile.workspace = true
-# The serve smoke test drives the IPC transport directly (`Endpoint`, `probe`).
-serde_json.workspace = true
+# The serve smoke tests probe the endpoint directly (`Endpoint`, `probe`),
+# reach `ManagedBy` (the same path `server.rs` uses) for the in-process
+# server, and take `StubBridge` from the server crate's `test-util`.
 sapphire-ipc.workspace = true
-# `StubBridge`, behind the server crate's `test-util`.
+sapphire-bridge-api.workspace = true
 sapphire-framework-server.workspace = true

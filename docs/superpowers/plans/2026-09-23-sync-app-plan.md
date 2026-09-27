@@ -164,7 +164,7 @@ Constraints).
   `serve` path, `AppKind::Cli` for one-shot invocations). App name `sapphire-sync` ⇒ marker
   `.sapphire-sync/` and env overrides `SAPPHIRE_SYNC_{CACHE,DATA,CONFIG}_DIR`.
 - Exit codes: 0 success; 1 runtime error (any `Err` out of `main`, printed as
-  `sapphire-sync: {err}` to stderr — the scaffold's `main` shape already does this) and also
+  `sapphire-sync: {err}` to stderr — main must do this itself; the scaffold's plain `Result` main printed `Error: {err:?}`) and also
   the framework dispatch's own `Ok(1)` cases (server-not-running); 2 usage error (clap's
   default — do not override).
 - Every public item in the core crate carries a doc comment; `#![warn(missing_docs)]` on
@@ -278,7 +278,7 @@ A bare invocation and `serve` are the same thing (`FrameworkCommand::Serve` is `
     `framework: FrameworkCommand::Serve` (the default), so the dispatch is
     `framework.dispatch(server, env!("CARGO_PKG_VERSION"))` for everything the framework
     owns, and `sync::dispatch(...)` only for `AppCommand::Sync(_)`; exit-code handling as
-    the scaffold's `main` already does (any `Err` → `sapphire-sync: {err}` + exit 1).
+    main implements it (any `Err` → eprintln `sapphire-sync: {err}` + exit 1 — the scaffold's plain `Result` main did NOT do this).
   - `cli/src/server.rs`:
     ```rust
     /// Build this app's server: the bridge connection (connect-only — a host without a

@@ -1949,7 +1949,6 @@ dependencies = [
  "sapphire-framework-ipc",
  "sapphire-framework-server",
  "sapphire-sync-core",
- "serde_json",
  "tempfile",
  "tokio",
  "tracing",

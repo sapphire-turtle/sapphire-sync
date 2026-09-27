@@ -17,20 +17,9 @@ pub use sapphire_sync_core::framework::server::FrameworkCommand;
 
 /// The command line of the one binary this app ships.
 ///
-/// The framework's verbs ride in flat as one variant of this enum
-/// ([`AppCommand::Framework`]), beside the app's own [`AppCommand::Sync`]
-/// (plan Deviations 3 and 6). One subcommand enum, every verb at the top
-/// level, is the shape the framework's own `command.rs` tests pin: clap
-/// rejects a `#[command(flatten)]` *struct field* whose type is
-/// `#[derive(Subcommand)]` beside a `#[command(subcommand)]` field — two
-/// subcommand enums cannot share one level, and a flattened field must
-/// implement `clap::Args`, which the `Subcommand` derive does not provide.
-/// A variant carrying the same enum works (the framework's tests use exactly
-/// that).
-///
 /// A bare invocation parses to `app: None`; the framework's half is then the
-/// enum's `#[default]` value, [`FrameworkCommand::Serve`], so "run the
-/// server" and `serve` are the same thing (command-system decision 1).
+/// enum's default value, `Serve`, so "run the server" and `serve` are the
+/// same thing.
 #[derive(Parser)]
 #[command(
     name = "sapphire-sync",
@@ -38,11 +27,11 @@ pub use sapphire_sync_core::framework::server::FrameworkCommand;
     about = "P2P file sync over sapphire-framework"
 )]
 pub struct Cli {
-    /// The app's own verbs (Deviation 6: just `sync`), beside the framework's.
+    /// The app's own verbs, beside the framework's.
     #[command(subcommand)]
     pub app: Option<AppCommand>,
-    /// The global `--workspace-dir` (issue #128), honoured by the app's own
-    /// `sync` verb; the framework's workspace verbs resolve their root the
+    /// The global `--workspace-dir`: the explicit workspace root, overriding the
+    /// automatic upward search. The framework's verbs resolve their root the
     /// same way on their side.
     #[command(flatten)]
     pub workspace: WorkspaceArgs,
@@ -51,10 +40,9 @@ pub struct Cli {
 /// The command line's top level: the app's own verbs and the framework's, flat.
 #[derive(Debug, Subcommand)]
 pub enum AppCommand {
-    /// Workspace sync controls (Deviation 6: `sync disable` is the one verb
-    /// the framework's `workspace` group lacks).
+    /// Workspace sync controls: `sync disable`.
     Sync(SyncCommand),
-    /// The framework's verbs, flattened in (spec decision 2).
+    /// The framework's verbs, flattened in.
     #[command(flatten)]
     Framework(FrameworkCommand),
 }

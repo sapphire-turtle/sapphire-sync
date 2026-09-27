@@ -6,8 +6,8 @@
 //! also pulls in — a `[[bin]]`-only package has no library target, so the
 //! integration test compiles the module into its own crate.
 
-// The module is normally reached as `sapphire_sync::cli`; here it is compiled
-// into this test crate directly.
+// The module is compiled into this test crate directly (no lib target to
+// link against).
 #[path = "../src/cli.rs"]
 mod cli;
 
@@ -22,7 +22,7 @@ fn parse(args: &[&str]) -> Cli {
 }
 
 /// A bare invocation parses to `app: None`; the framework's half is then the
-/// enum's `#[default]`, `Serve` — the same thing the service unit runs.
+/// enum's default, `Serve` — the same thing the service unit runs.
 #[test]
 fn a_bare_invocation_is_serve() {
     let cli = parse(&[]);
