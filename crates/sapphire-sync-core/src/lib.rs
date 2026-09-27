@@ -14,8 +14,8 @@ use sapphire_framework::workspace::AppContext;
 /// Application-wide context for sapphire-sync, shared across this app's
 /// binaries.
 ///
-/// Declare-and-init-once: the binary calls [`CTX::init`] once at startup,
-/// before opening any workspace. Tests point
+/// Declare-and-init-once: the binary calls `AppContext::init` on this static
+/// once at startup, before opening any workspace. Tests point
 /// `SAPPHIRE_SYNC_{CACHE,DATA,CONFIG}_DIR` at scratch trees instead, one
 /// `Mutex`-guarded env at a time.
 pub static CTX: AppContext = AppContext::new("sapphire-sync");

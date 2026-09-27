@@ -17,12 +17,25 @@ anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive", "env"] }
 grain-id = { version = "0.16", features = ["serde"] }
-# The framework facade. A sync app needs the server/sync stack only — never
-# `retrieve` (no search stack); the `server` feature implies `backend` +
-# `workspace`, which is where AppContext lives. `redb-store` must be enabled
-# explicitly: with default-features = false the persistent store silently
-# falls back to in-memory otherwise.
-sapphire-framework = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", default-features = false, features = ["server", "sync", "redb-store"] }
+# The framework facade. A sync app needs the server/sync stack plus the bridge
+# module (Task 4's e2e harness runs real bridges through it) — never `retrieve`
+# (no search stack); the `server` feature implies `backend` + `workspace`, which
+# is where AppContext lives. `redb-store` must be enabled explicitly: with
+# default-features = false the persistent store silently falls back to in-memory
+# otherwise.
+sapphire-framework = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", default-features = false, features = ["server", "sync", "bridge", "redb-store"] }
+# The bridge control-plane client an app server speaks (`BridgeClient`,
+# `ManagedBy`). It lives in `sapphire-framework-bridge-api`, which the facade
+# does not re-export (the facade's `bridge` module is the daemon side), so it is
+# a direct dependency of the CLI on the same git source.
+sapphire-bridge-api = { package = "sapphire-framework-bridge-api", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh" }
+# The IPC transport (`Endpoint`, `probe`, `connect_or_absent`, `ClientInfo`) for
+# the CLI's own one-shot connections; the facade's `ipc` module sits behind a
+# feature this app does not enable.
+sapphire-ipc = { package = "sapphire-framework-ipc", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh" }
+# Test-only: the server crate's `StubBridge` rides behind `test-util`, which the
+# facade does not expose, so tests reach the crate directly.
+sapphire-framework-server = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", default-features = false, features = ["test-util"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"

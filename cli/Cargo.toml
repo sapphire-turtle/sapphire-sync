@@ -16,9 +16,16 @@ path = "src/main.rs"
 sapphire-sync-core.workspace = true
 anyhow.workspace = true
 clap.workspace = true
+# The bridge client and `ManagedBy`: the facade does not re-export -bridge-api.
+sapphire-bridge-api.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
 tempfile.workspace = true
+# The serve smoke test drives the IPC transport directly (`Endpoint`, `probe`).
+serde_json.workspace = true
+sapphire-ipc.workspace = true
+# `StubBridge`, behind the server crate's `test-util`.
+sapphire-framework-server.workspace = true
