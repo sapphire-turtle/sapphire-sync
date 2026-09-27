@@ -24,9 +24,9 @@ tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
 tempfile.workspace = true
-# The serve smoke tests probe the endpoint directly (`Endpoint`, `probe`),
-# reach `ManagedBy` (the same path `server.rs` uses) for the in-process
-# server, and take `StubBridge` from the server crate's `test-util`.
-sapphire-ipc.workspace = true
-sapphire-bridge-api.workspace = true
+# The sync/serve tests take the server crate's `StubBridge` (the in-process
+# bridge stand-in over a `Connection::pair`) from its `test-util` feature, and
+# `probe` the endpoint while a server starts. `Endpoint` itself comes through
+# the facade's `ipc` module, like the CLI's own code.
 sapphire-framework-server.workspace = true
+sapphire-ipc.workspace = true

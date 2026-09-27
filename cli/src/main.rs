@@ -53,9 +53,12 @@ fn main() {
 async fn run(cli: cli::Cli) -> anyhow::Result<()> {
     let version = env!("CARGO_PKG_VERSION");
     match cli.app {
-        // The app's own verbs come first; Task 3 lands the real `sync`
-        // dispatch, so the arm is a placeholder until then.
-        Some(cli::AppCommand::Sync(command)) => sync::dispatch(command),
+        // The app's own verbs come first. The workspace argument is the same
+        // global `--workspace-dir` the framework's verbs resolve on their side.
+        Some(cli::AppCommand::Sync(command)) => {
+            let code = sync::dispatch(command, cli.workspace.workspace_dir).await?;
+            std::process::exit(code);
+        }
         // Every framework verb. One-shots dispatch against a bridge-less
         // server — `status` on a host without a running server must say the
         // framework's "no … server is running", not a bridge error — and the

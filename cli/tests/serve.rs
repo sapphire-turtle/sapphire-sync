@@ -5,22 +5,25 @@
 //! "no sapphire-sync server is running" (exit 1). Both go through the *real
 //! binary* — `env!("CARGO_BIN_EXE_sapphire-sync")` — so the subprocess's
 //! stdout and stderr are captured exactly as a user sees them, error format
-//! (`sapphire-sync: {err}`) included. The server itself is the in-process
-//! `AppServer::run()` of the same pieces `server::build_serve()` wires —
-//! `SyncRuntime::new(&CTX, bridge, exe, ManagedBy::Service)` into
-//! `AppServer::new(&CTX, VERSION).sync(..)` — except the bridge, which is the
-//! `test-util` `StubBridge` (an in-process stand-in: `BridgeClient::connect`
-//! needs a running daemon, and starting one is Task 4's e2e harness).
+//! included. The server itself is the in-process `AppServer::run()` of the
+//! same pieces `server::build_serve()` wires — `SyncRuntime::new(&CTX,
+//! bridge, exe, ManagedBy::Service)` into `AppServer::new(&CTX,
+//! VERSION).sync(..)` — except the bridge, which is the `test-util`
+//! `StubBridge` (an in-process stand-in: `BridgeClient::connect` needs a
+//! running daemon, and starting one is Task 4's e2e harness).
 //!
-//! The parse side lives in `cli_parse.rs`; the one binary-vs-crate assertion
-//! here is that the compiled-in parse default matches what the binary does.
+//! The parse side lives in `cli_parse.rs`; the app's own `sync` verb against
+//! a live in-process server lives in `cli_sync.rs`. The one binary-vs-crate
+//! assertion here is that the compiled-in parse default matches what the
+//! binary does.
 
 use std::process::Command;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use sapphire_framework_server::sync::testing::StubBridge;
-use sapphire_ipc::{Endpoint, probe};
+use sapphire_ipc::probe;
 use sapphire_sync_core::CTX;
+use sapphire_sync_core::framework::ipc::Endpoint;
 use sapphire_sync_core::framework::server::AppServer;
 use sapphire_sync_core::framework::workspace::AppKind;
 
@@ -36,8 +39,8 @@ struct Env {
 impl Env {
     /// Point the context and the runtime directory at `root`, in one lock.
     ///
-    /// The previous values are captured *before* the writes, so the guard
-    /// restores the caller's environment (the framework's `EnvGuard` pattern).
+    /// The previous values are captured before the writes, so the guard
+    /// restores the caller's environment (the framework's EnvGuard pattern).
     fn set(root: &std::path::Path) -> Env {
         let names = [
             "SAPPHIRE_SYNC_CACHE_DIR",
@@ -45,9 +48,9 @@ impl Env {
             "SAPPHIRE_SYNC_CONFIG_DIR",
             "SAPPHIRE_RUNTIME_DIR",
         ];
-        // SAFETY: `ENV_LOCK` serialises every read and write of the process
+        // SAFETY: ENV_LOCK serialises every read and write of the process
         // environment in this test binary; the writes below happen under the
-        // caller's lock, and the guard holds that same lock until `Drop` has
+        // caller's lock, and the guard holds that same lock until Drop has
         // restored the captured values — including while unwinding.
         let previous = unsafe {
             names
@@ -73,7 +76,7 @@ fn leaf_of(name: &str) -> &'static str {
 
 impl Drop for Env {
     fn drop(&mut self) {
-        // SAFETY: the same `ENV_LOCK` guard is still held; `Drop` runs before
+        // SAFETY: the same ENV_LOCK guard is still held; Drop runs before
         // it is released.
         unsafe {
             for (name, value) in &self.previous {
@@ -92,7 +95,7 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Lock the process environment for this test and hold it for the test's body.
 ///
-/// The returned guard is kept alive until the end of the test, so the `Env`
+/// The returned guard is kept alive until the end of the test, so the Env
 /// restore and every read of these variables are serialised against the other
 /// tests of this binary. A poisoned lock only means some other test panicked
 /// while holding it; the environment is not invariant-critical here.
@@ -133,12 +136,12 @@ fn status_without_a_server_prints_the_frameworks_line() {
     let tmp = tempfile::tempdir().unwrap();
     let _env = Env::set(tmp.path());
 
-    // A bare `CTX.init` is *not* needed by the binary (it does its own), and
+    // A bare CTX.init is not needed by the binary (it does its own), and
     // this test must not init the process's CTX at all: one init per process.
     let output = run_binary(&["status"]);
 
     assert_eq!(output.status.code(), Some(1), "absent server exits 1");
-    // The framework prints the absence line on stdout (a `status` report, not
+    // The framework prints the absence line on stdout (a status report, not
     // an error); stderr stays empty.
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
@@ -147,24 +150,36 @@ fn status_without_a_server_prints_the_frameworks_line() {
     );
 }
 
-/// `sync disable` (Task 3's placeholder): the app's own error format.
+/// `sync disable` with no server, from a directory a workspace resolves from:
+/// the framework's absence line on stdout, exit 1 — the same answer every
+/// one-shot verb gives, because dispatch connects and never starts anything.
+///
+/// The subprocess runs inside a workspace (its cwd is the test's scratch
+/// tree): without one the resolution fails before the connect does, and the
+/// line the test would pin is the app's resolution error instead of the
+/// framework's.
 #[test]
-fn a_failing_verb_prints_the_apps_error_format() {
+fn sync_disable_without_a_server_prints_the_frameworks_line() {
     let _lock = lock_env();
     let tmp = tempfile::tempdir().unwrap();
     let _env = Env::set(tmp.path());
+    std::fs::create_dir_all(tmp.path().join("notes").join(format!(".{}", CTX.app_name))).unwrap();
 
-    let output = run_binary(&["sync", "disable"]);
+    let output = Command::new(env!("CARGO_BIN_EXE_sapphire-sync"))
+        .args(["sync", "disable"])
+        .current_dir(tmp.path().join("notes"))
+        .output()
+        .expect("the sapphire-sync binary must run");
 
-    assert_eq!(output.status.code(), Some(1), "the placeholder fails");
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(1), "absent server exits 1");
+    let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stderr.starts_with("sapphire-sync: "),
-        "the app's own error format, got: {stderr}"
+        stdout.contains("no sapphire-sync server is running"),
+        "the framework's absence line, got: {stdout}"
     );
     assert!(
-        stderr.contains("not implemented yet"),
-        "the placeholder's message, got: {stderr}"
+        String::from_utf8_lossy(&output.stderr).is_empty(),
+        "absence is a report, not an error: stderr stays empty"
     );
 }
 
@@ -203,8 +218,8 @@ async fn status_against_a_running_server_prints_running_true() {
     assert!(stdout.contains("running: true"), "output was: {stdout}");
     assert!(stdout.contains("pid: "), "output was: {stdout}");
 
-    // Tear the server down the way a test can: `run()` installs no app-side
-    // stop channel (the IPC `server.shutdown` method is the framework's), so
+    // Tear the server down the way a test can: run() installs no app-side
+    // stop channel (the IPC server.shutdown method is the framework's), so
     // the spawned task is aborted. Windows' pipe names are released when the
     // listener instance is dropped, which the abort's unwind does before this
     // test's guard is gone — and the next bind is by another process, never a

@@ -1729,6 +1729,7 @@ source = "git+https://github.com/fluo10/sapphire-framework?branch=feat%2Fp2p-syn
 dependencies = [
  "sapphire-framework-backend",
  "sapphire-framework-bridge",
+ "sapphire-framework-ipc",
  "sapphire-framework-server",
  "sapphire-framework-sync",
  "sapphire-framework-workspace",
