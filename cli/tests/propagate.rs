@@ -27,7 +27,6 @@ async fn pair_and_propagate() {
     common::init_tracing();
     let net = LoopbackNetwork::new();
     let (a, b) = common::synced_pair(&net).await;
-    eprintln!("STEP: paired and settled");
 
     // 1. A write on A appears under B's root.
     common::write(&a, "note.md", "written on host a");
@@ -37,7 +36,6 @@ async fn pair_and_propagate() {
     )
     .await;
     assert_eq!(arrived, "written on host a");
-    eprintln!("STEP: write A->B ok");
 
     // 2. An edit on B converges on A.
     common::write(&b, "note.md", "edited on host b");
@@ -50,18 +48,14 @@ async fn pair_and_propagate() {
         "the edit made on host b never converged on host a",
     )
     .await;
-    eprintln!("STEP: edit B->A ok");
 
     // 3. A deletion on A is a deletion on B.
     std::fs::remove_file(a.ws.join("note.md")).unwrap();
-    eprintln!("DIAG-after-delete-A={}", common::diagnostic_status(&a).await);
-    eprintln!("DIAG-after-delete-B={}", common::diagnostic_status(&b).await);
     common::poll_until(
         || (!a.ws.join("note.md").exists() && !b.ws.join("note.md").exists()).then_some(()),
         "the deletion made on host a never arrived on host b",
     )
     .await;
-    eprintln!("STEP: delete A->B ok");
 
     // 4. The same tree on both sides, file by file — after one more write from each
     //    side, so the final compare is of live content, not of an emptied workspace.
@@ -72,9 +66,8 @@ async fn pair_and_propagate() {
             let ok = |h: &common::Host, rel: &str, text: &str| {
                 std::fs::read_to_string(h.ws.join(rel)).ok().as_deref() == Some(text)
             };
-            (ok(&a, "readme.md", "host b wrote this")
-                && ok(&b, "meeting/notes.md", "agreed"))
-            .then_some(())
+            (ok(&a, "readme.md", "host b wrote this") && ok(&b, "meeting/notes.md", "agreed"))
+                .then_some(())
         },
         "the final cross-writes never converged",
     )

@@ -142,17 +142,21 @@ pub async fn start_host(net: &LoopbackNetwork, node_id: &str, device_name: &str)
     // binary, and a bridge that started it would spawn a second copy of the test suite.
     let control = Endpoint::in_dir("bridge", runtime_dir.clone());
     let data = Endpoint::in_dir("bridge-data", runtime_dir.clone());
-    let bridge = Bridge::new(bridge_dir.clone(), Arc::new(net.transport(node_id)), VERSION)
-        .unwrap()
-        .net(NetConfig {
-            wake_on_sync: false,
-            discovery: false,
-            relays: Vec::new(),
-            use_default_relays: false,
-            ..NetConfig::default()
-        })
-        .control_endpoint(control.clone())
-        .data_endpoint(data);
+    let bridge = Bridge::new(
+        bridge_dir.clone(),
+        Arc::new(net.transport(node_id)),
+        VERSION,
+    )
+    .unwrap()
+    .net(NetConfig {
+        wake_on_sync: false,
+        discovery: false,
+        relays: Vec::new(),
+        use_default_relays: false,
+        ..NetConfig::default()
+    })
+    .control_endpoint(control.clone())
+    .data_endpoint(data);
     let bridge_runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -339,22 +343,6 @@ where
     }
 }
 
-/// The sync status of one host's workspace, for diagnostics.
-pub async fn diagnostic_status(host: &Host) -> String {
-    let call = host.client.call::<_, sapphire_sync_core::framework::backend::protocol::SyncStatusResult>(
-        "sync.status",
-        proto::WsParams { ws: host.ws.clone() },
-    );
-    match tokio::time::timeout(std::time::Duration::from_secs(5), call).await {
-        Ok(Ok(s)) => format!(
-            "enabled={} peers={} paused={:?} last_error={:?} bridge_available={}",
-            s.enabled, s.peers, s.paused, s.last_error, s.bridge_available
-        ),
-        Ok(Err(e)) => format!("status call failed: {e}"),
-        Err(_) => "STATUS TIMED OUT (5s) - the app server never answered".to_owned(),
-    }
-}
-
 /// Wait until every host holds an open live session to every peer its bridge reports as
 /// connected.
 ///
@@ -424,30 +412,24 @@ pub async fn enable_sync(host: &Host) {
 
 /// Two hosts sharing one workspace, synced, introduced and settled.
 ///
-/// Each host founds its own workgroup, both learn each other's device records (the
-/// ledger state a real pairing leaves), both get the same `sync-id`, and both enable
-/// sync — which dials immediately. The returned pair has open live sessions; the caller
-/// can write from either side.
+/// Each host founds its own workgroup; [`introduce`] then gives each host a copy of the
+/// other's device record (so each bridge can reach the other's node) and the same
+/// `sync-id` (the workspace identity both servers key on). Both then enable sync, which
+/// dials immediately. The returned pair has open live sessions; the caller can write
+/// from either side.
 pub async fn synced_pair(net: &LoopbackNetwork) -> (Host, Host) {
-    eprintln!("HARNESS: starting host a");
     let a = start_host(net, NODE_A, "host-a").await;
-    eprintln!("HARNESS: host a up; starting host b");
     let b = start_host(net, NODE_B, "host-b").await;
-    eprintln!("HARNESS: host b up; introducing");
     introduce(&a, &b);
-    eprintln!("HARNESS: introduced; enabling a");
     tokio::time::timeout(Duration::from_secs(20), enable_sync(&a))
         .await
         .expect("enable_sync(a) timed out (20s)");
-    eprintln!("HARNESS: enabled a; enabling b");
     tokio::time::timeout(Duration::from_secs(20), enable_sync(&b))
         .await
         .expect("enable_sync(b) timed out (20s)");
-    eprintln!("HARNESS: enabled b; settling");
     tokio::time::timeout(Duration::from_secs(45), settle(&[&a, &b]))
         .await
         .expect("the hosts never settled (45s timeout)");
-    eprintln!("HARNESS: settled");
     (a, b)
 }
 
@@ -510,7 +492,11 @@ fn walk(root: &Path) -> Vec<std::path::PathBuf> {
             let entry = entry.unwrap();
             let path = entry.path();
             if entry.file_type().unwrap().is_dir() {
-                if path.file_name().map(|n| n != std::ffi::OsStr::new(&marker)).unwrap_or(true) {
+                if path
+                    .file_name()
+                    .map(|n| n != std::ffi::OsStr::new(&marker))
+                    .unwrap_or(true)
+                {
                     stack.push(path);
                 }
             } else {
@@ -519,30 +505,4 @@ fn walk(root: &Path) -> Vec<std::path::PathBuf> {
         }
     }
     out
-}
-
-/// Controller's decisive-dump helpers (temporary, for the probe).
-impl Host {
-    /// Release everything that holds the replica store open, without dropping `tmp`.
-    pub fn stop(&mut self) {
-        if let Some(server) = self.server.take() {
-            server.abort();
-        }
-        self.runtime.take();
-        if let Some(bridge) = self.bridge.take() {
-            std::thread::spawn(move || drop(bridge));
-        }
-    }
-
-    /// The file names of this host's device records — a record's file name IS the
-    /// device's id (grain-id display form), the same id a conflict copy is named with.
-    pub fn device_ids(&self) -> Vec<String> {
-        std::fs::read_dir(self.bridge_dir.devices_dir(self.workgroup_id))
-            .map(|rd| {
-                rd.filter_map(|e| e.ok())
-                    .map(|e| e.file_name().to_string_lossy().into_owned())
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
 }

@@ -1946,20 +1946,16 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "grain-id",
  "sapphire-framework-bridge",
  "sapphire-framework-bridge-api",
  "sapphire-framework-ipc",
  "sapphire-framework-server",
- "sapphire-framework-sync",
  "sapphire-sync-core",
  "tempfile",
  "tokio",
  "toml",
  "tracing",
  "tracing-subscriber",
- "uuid",
- "walkdir",
 ]
 
 [[package]]

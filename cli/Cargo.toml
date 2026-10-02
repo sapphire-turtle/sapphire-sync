@@ -37,10 +37,3 @@ sapphire-framework-bridge = { package = "sapphire-framework-bridge", git = "http
 # The harness parses and rewrites one device-record field (`introduce`'s
 # `~`-prefixed ledger copies).
 toml.workspace = true
-# The replica-layer probe (temporary diagnostics): the sync core crate and the
-# grain-id / uuid types its API names.
-sapphire-framework-sync = { package = "sapphire-framework-sync", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh" }
-grain-id = "0.16"
-uuid = { workspace = true }
-# Final-tree comparison in the propagate scenario walks both roots.
-walkdir.workspace = true
