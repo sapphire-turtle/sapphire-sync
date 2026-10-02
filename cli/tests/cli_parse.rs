@@ -55,7 +55,7 @@ fn status_parses() {
 #[test]
 fn the_service_subcommands_parse() {
     for args in [
-        vec!["service", "install", "--user"],
+        vec!["service", "install"],
         vec!["service", "uninstall"],
         vec!["service", "status"],
     ] {

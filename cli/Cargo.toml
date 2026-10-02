@@ -30,3 +30,17 @@ tempfile.workspace = true
 # the facade's `ipc` module, like the CLI's own code.
 sapphire-framework-server.workspace = true
 sapphire-ipc.workspace = true
+# The e2e harness builds real bridges: `LoopbackNetwork`, `NetConfig` and the
+# endpoint-taking constructors ride behind the bridge crate's `test-util`
+# feature (the facade does not expose it).
+sapphire-framework-bridge = { package = "sapphire-framework-bridge", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", features = ["test-util"] }
+# The harness parses and rewrites one device-record field (`introduce`'s
+# `~`-prefixed ledger copies).
+toml.workspace = true
+# The replica-layer probe (temporary diagnostics): the sync core crate and the
+# grain-id / uuid types its API names.
+sapphire-framework-sync = { package = "sapphire-framework-sync", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh" }
+grain-id = "0.16"
+uuid = { workspace = true }
+# Final-tree comparison in the propagate scenario walks both roots.
+walkdir.workspace = true
