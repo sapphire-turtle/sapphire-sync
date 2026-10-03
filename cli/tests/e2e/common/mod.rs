@@ -506,3 +506,52 @@ fn walk(root: &Path) -> Vec<std::path::PathBuf> {
     }
     out
 }
+
+/// [`poll_until`] for a condition that has to be awaited.
+///
+/// A few conditions are only reachable through an `async` call — the runtime's own
+/// [`SyncRuntime::status`], say, which awaits the bridge and the workspace table. The
+/// polling discipline is the same: name the condition, and let a missed one be a
+/// deadline rather than a blind sleep.
+pub async fn poll_until_async<F, Fut, T>(mut condition: F, what: &str) -> T
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Option<T>>,
+{
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        if let Some(value) = condition().await {
+            return value;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "never converged: {what} (polling gave up after 10s)"
+        );
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+}
+
+/// Every file under `host`'s `<rel>` directory, as sorted `/`-separated relative paths.
+///
+/// The conflict scenario's unit: it cares about the *set* of names a root holds (the
+/// winner plus one conflict copy), not about which host won, so both roots are compared
+/// as sets. Windows canonical spellings are avoided by comparing relative paths.
+pub fn files_under(host: &Host, rel: &str) -> Vec<String> {
+    let dir = host.ws.join(rel);
+    let mut out: Vec<String> = walk(&dir)
+        .into_iter()
+        .map(|path| {
+            path.strip_prefix(&dir)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/")
+        })
+        .collect();
+    out.sort();
+    out
+}
+
+/// The text of `host`'s `<rel>` file, or `None` while it does not exist yet.
+pub fn read_text(host: &Host, rel: &str) -> Option<String> {
+    std::fs::read_to_string(host.ws.join(rel)).ok()
+}
