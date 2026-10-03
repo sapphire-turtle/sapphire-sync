@@ -8,21 +8,20 @@
 //! keeps the path, the loser's version lands beside it as a conflict copy, and both
 //! roots must end up agreeing on that.
 //!
-//! Three ordering rules make the scenario deterministic, and all were measured with a
+//! Two ordering rules make the scenario deterministic, and both were measured with a
 //! probe before this file was written (see `task-5-probe-findings.md`):
 //!
 //! 1. **Settle before writing.** The pair is [`common::settle`]d only *after* the base
 //!    file has arrived, so both live sessions are open before the concurrent writes.
-//! 2. **Wait for each side to have recorded its own edit** before the exchange below, so
-//!    the local scans (the watcher's debounce) have run and the replicas each hold their
-//!    own version.
-//! 3. **Re-exchange until the roots agree.** The framework's live path is best-effort —
+//! 2. **Re-exchange until the roots agree.** The framework's live path is best-effort —
 //!    an update can be dropped while a session is opening, and the documented recovery is
 //!    the *next* exchange ("the peer's vector does not cover it, so the next dial or push
 //!    carries it again"). Closing the sessions and letting the dialer rebuild them is
 //!    that exchange, exactly what a reconnect does in the field. One exchange is
 //!    sometimes enough and sometimes not, so the loop is bounded by a deadline rather
-//!    than by a round count.
+//!    than by a round count. This loop is the scenario's real safety net: the writes are
+//!    plain `fs::write`s, so the convergence it waits for is what actually guarantees the
+//!    replicas each hold their own version before an exchange is judged.
 //!
 //! Every wait is a deadline-poll on a condition; nothing sleeps blindly.
 
@@ -53,22 +52,12 @@ async fn concurrent_edits_keep_both_versions() {
     common::settle(&[&a, &b]).await;
 
     // Two edits at the same path, one from each side, neither aware of the other. The
-    // order is irrelevant: both are committed.
+    // order is irrelevant: both are committed. `common::write` is a plain synchronous
+    // `fs::write`, so the file is on disk the instant it returns; nothing here waits on
+    // the *local* replica to record it. What has to be recorded — and what the loop in
+    // `converge` below actually waits for — is the converged end state on both roots.
     common::write(&a, "notes/a.md", "from a");
     common::write(&b, "notes/a.md", "from b");
-
-    // Each side's own edit has to be *recorded* before the exchange, or an exchange could
-    // run before the local scan committed it and carry nothing.
-    common::poll_until(
-        || (common::read_text(&a, "notes/a.md").as_deref() == Some("from a")).then_some(()),
-        "host a never recorded its own edit",
-    )
-    .await;
-    common::poll_until(
-        || (common::read_text(&b, "notes/a.md").as_deref() == Some("from b")).then_some(()),
-        "host b never recorded its own edit",
-    )
-    .await;
 
     // Re-exchange until both roots hold the same two names with the two versions. A
     // converged pair needs no further exchange; the loop only pays for the cases where an
@@ -108,6 +97,29 @@ async fn concurrent_edits_keep_both_versions() {
     common::assert_roots_match(&a, &b);
 }
 
+/// Every file under `host`'s `<rel>` directory, as sorted `/`-separated relative paths.
+///
+/// This scenario's unit: it cares about the *set* of names a root holds (the winner plus
+/// one conflict copy), not about which host won, so both roots are compared as sets.
+/// Windows canonical spellings are avoided by comparing relative paths.
+///
+/// Lives here rather than in the shared harness because conflict resolution is the only
+/// scenario that names the files in a directory rather than the files it wrote.
+fn files_under(host: &common::Host, rel: &str) -> Vec<String> {
+    let dir = host.ws.join(rel);
+    let mut out: Vec<String> = common::walk(&dir)
+        .into_iter()
+        .map(|path| {
+            path.strip_prefix(&dir)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/")
+        })
+        .collect();
+    out.sort();
+    out
+}
+
 /// Force exchanges until both roots hold the winner and one conflict copy of both writes,
 /// and return the agreed set of names under `notes/`.
 ///
@@ -119,8 +131,8 @@ async fn converge(a: &common::Host, b: &common::Host) -> Vec<String> {
     let deadline = Instant::now() + Duration::from_secs(45);
     loop {
         let settled = |left: &common::Host, right: &common::Host| -> Option<Vec<String>> {
-            let on_left = common::files_under(left, "notes");
-            let on_right = common::files_under(right, "notes");
+            let on_left = files_under(left, "notes");
+            let on_right = files_under(right, "notes");
             if on_left.len() != 2 || on_left != on_right {
                 return None;
             }
@@ -141,8 +153,8 @@ async fn converge(a: &common::Host, b: &common::Host) -> Vec<String> {
         assert!(
             Instant::now() < deadline,
             "the concurrent edits never converged: a={:?} b={:?}",
-            common::files_under(a, "notes"),
-            common::files_under(b, "notes")
+            files_under(a, "notes"),
+            files_under(b, "notes")
         );
 
         // One exchange: drop the live sessions and wait for the dialer to rebuild both

@@ -3,7 +3,7 @@
 //! Two complete hosts on one loopback network (the harness in `e2e/common/mod.rs`,
 //! included by path — the package is `[[bin]]`-only, so only top-level `tests/*.rs`
 //! files are cargo-discovered and a nested `tests/e2e/` is not). The scenario: take a
-//! synced workspace's root away from A, and check that sync *pauses* rather than
+//! synced workspace's root away from A, and check that sync *stops* rather than
 //! replicating the disappearance as a mass deletion.
 //!
 //! ## What the framework actually does (measured — see `task-5-probe-findings.md`)
@@ -21,11 +21,11 @@
 //!   `sapphire-framework-sync/tests/replica_guards.rs` asserts `RootMissing` at that
 //!   layer, and `MarkerMissing` when only the marker directory goes).
 //!
-//! This test therefore asserts the two behaviours the app *does* surface:
+//! This file therefore asserts the two behaviours the app *does* surface:
 //!
 //! 1. renamed away → the workspace stops being reported as a synced workspace at all
-//!    (it is not enabled), which is still a pause in effect: no scan, no replication, no
-//!    mass deletion;
+//!    (`enabled: false` and **no** pause reason), which is still a stop in effect: no
+//!    scan, no replication, no mass deletion;
 //! 2. the same absence expressed as a non-directory root → `paused: Some("RootMissing")`.
 //!
 //! Both are checks that the peer's files are untouched. The recovery half is asserted
@@ -41,9 +41,12 @@ mod common;
 
 use sapphire_sync_core::framework::bridge::LoopbackNetwork;
 
-/// A renamed-away root is not replicated as a mass deletion, and the peer is untouched.
+/// A renamed-away root stops the workspace syncing, and the peer is untouched.
+///
+/// Named for what it asserts: the workspace stops being reported as synced (it is not
+/// enabled, and carries no pause reason), rather than pausing with a `RootMissing` reason.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_vanished_root_pauses_instead_of_deleting_everything() {
+async fn a_vanished_root_stops_reporting_synced_instead_of_deleting_everything() {
     common::init_tracing();
     let net = LoopbackNetwork::new();
     let (a, b) = common::synced_pair(&net).await;
@@ -63,16 +66,23 @@ async fn a_vanished_root_pauses_instead_of_deleting_everything() {
 
     // The root no longer resolves, so the workspace is not reported as a synced one any
     // more — the structural consequence of `status` canonicalizing first (see the module
-    // docs). What matters here is the *effect*: replication is paused, and the peer keeps
-    // its files.
-    common::poll_until_async(
+    // docs). What matters here is the *effect*: replication stops, and the peer keeps its
+    // files.
+    let status = common::poll_until_async(
         || async {
             let status = a.runtime().unwrap().status(&a.ws).await;
-            (!status.enabled).then_some(())
+            (!status.enabled).then_some(status)
         },
         "host a never stopped reporting the vanished workspace as synced",
     )
     .await;
+    // The measured state, asserted rather than left implicit: this path reports no pause
+    // *reason* at all (the canonicalize fails before the guard is reached).
+    assert!(
+        status.paused.is_none(),
+        "a renamed-away root surfaces no pause reason, but got {:?}",
+        status.paused
+    );
     assert_eq!(
         common::read_text(&b, "notes/a.md").as_deref(),
         Some("base"),

@@ -483,7 +483,10 @@ pub fn assert_roots_match(a: &Host, b: &Host) {
 }
 
 /// Every file under `root`, recursively, skipping the app's marker directory.
-fn walk(root: &Path) -> Vec<std::path::PathBuf> {
+///
+/// Shared by the harness (`assert_roots_match`) and by `conflict.rs`, which names the
+/// files in a directory rather than the files it wrote.
+pub fn walk(root: &Path) -> Vec<std::path::PathBuf> {
     let marker = format!(".{}", ctx().app_name);
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
@@ -529,26 +532,6 @@ where
         );
         tokio::time::sleep(Duration::from_millis(25)).await;
     }
-}
-
-/// Every file under `host`'s `<rel>` directory, as sorted `/`-separated relative paths.
-///
-/// The conflict scenario's unit: it cares about the *set* of names a root holds (the
-/// winner plus one conflict copy), not about which host won, so both roots are compared
-/// as sets. Windows canonical spellings are avoided by comparing relative paths.
-pub fn files_under(host: &Host, rel: &str) -> Vec<String> {
-    let dir = host.ws.join(rel);
-    let mut out: Vec<String> = walk(&dir)
-        .into_iter()
-        .map(|path| {
-            path.strip_prefix(&dir)
-                .unwrap()
-                .to_string_lossy()
-                .replace('\\', "/")
-        })
-        .collect();
-    out.sort();
-    out
 }
 
 /// The text of `host`'s `<rel>` file, or `None` while it does not exist yet.
