@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # The toolchain (and its clippy/rustfmt components) comes from
+      # rust-toolchain.toml. rustup installs it on first use; do that in its
+      # own step so the download does not land in the middle of another one.
+      - name: Install the pinned toolchain
+        run: cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      # The graph still contains the search stack (the framework cleanup is
+      # a follow-up), so the test step compiles fastembed/ort and needs
+      # protoc. Once the cleanup lands this step is dead weight and can go.
+      - name: Install protoc (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Install protoc (Windows)
+        if: runner.os == 'Windows'
+        run: choco install protoc -y
+
+      - name: Check formatting
+        shell: bash
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        shell: bash
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Test
+        shell: bash
+        run: cargo test --all-features --locked
+
+      # The dependency guard: a sync-only app must not pull in the search
+      # stack. `cargo tree -i` prints the reverse-dependency tree; the guard
+      # passes only when it is empty.
+      - name: Dependency guard (no search stack)
+        shell: bash
+        run: |
+          out=$(cargo tree -p sapphire-sync -i sapphire-framework-retrieve)
+          if [ -n "$out" ]; then
+            echo "::error::sapphire-framework-retrieve leaked into the graph:"
+            echo "$out"
+            exit 1
+          fi
