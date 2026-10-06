@@ -301,12 +301,13 @@ fn copy_device(from: &Host, to: &Host) {
     std::fs::write(&destination, toml::to_string_pretty(&record).unwrap()).unwrap();
 }
 
-/// What a client says it is. The version must match the server's, or the handshake
-/// replaces what it finds.
+/// What a client says it is. The API version must match the server's, or the
+/// handshake fails; the crate version is only reported.
 fn client_info(kind: &str) -> ClientInfo {
     ClientInfo {
         kind: kind.to_owned(),
         version: VERSION.to_owned(),
+        api: proto::API_VERSION,
         pid: std::process::id(),
     }
 }

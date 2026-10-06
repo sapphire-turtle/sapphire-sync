@@ -70,10 +70,11 @@ async fn disable(root: Option<PathBuf>) -> anyhow::Result<i32> {
     let info = ClientInfo {
         kind: "cli".to_owned(),
         version: env!("CARGO_PKG_VERSION").to_owned(),
+        api: proto::API_VERSION,
         pid: std::process::id(),
     };
-    // Connect-only, and the version gate rides the handshake: a live server of
-    // another version is `ServiceVersionMismatch`, which propagates like any
+    // Connect-only, and the API gate rides the handshake: a live server of
+    // another API version is `ApiVersionMismatch`, which propagates like any
     // other error. `None` is nothing listening — the report, exit 1.
     let Some((client, _)) = connect_or_absent(&endpoint, CTX.app_name, info).await? else {
         println!("no {} server is running", CTX.app_name);
