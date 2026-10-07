@@ -27,8 +27,11 @@ crate of its own.
 `.github/workflows/ci.yml` runs an ubuntu + windows matrix over four steps:
 `cargo fmt --all -- --check`, `cargo clippy --all-targets --all-features --
 -D warnings`, `cargo test --all-features --locked`, and a dependency guard —
-`cargo tree -p sapphire-sync -i sapphire-framework-retrieve` must print
-nothing (a sync-only app must not pull in the search stack).
+the default build's `cargo tree -p sapphire-sync` must not contain `fastembed`,
+`ort` or `ort-sys` (the embedding stack, the heavy part of search).
+`sapphire-framework-retrieve` itself is expected: the framework's workspace
+layer depends on it in every app, and without `fastembed-embed` it brings only
+full-text search.
 
 ## What belongs here
 

@@ -18,9 +18,11 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive", "env"] }
 grain-id = { version = "0.16", features = ["serde"] }
 # The framework facade. A sync app needs the server/sync stack plus the bridge
-# module (Task 4's e2e harness runs real bridges through it) — never `retrieve`
-# (no search stack); the `server` feature implies `backend` + `workspace`, which
-# is where AppContext lives. `ipc` is the transport: the CLI's own one-shot
+# module (Task 4's e2e harness runs real bridges through it). `retrieve` comes
+# in through `workspace` regardless, but only its full-text half: the
+# embedding stack (`fastembed-embed`) stays off, and CI guards that. The
+# `server` feature implies `backend` + `workspace`, which is where AppContext
+# lives. `ipc` is the transport: the CLI's own one-shot
 # verbs connect over it (`Endpoint`, Task 3's `sync disable`) and the tests
 # probe it while a server starts. `redb-store` must be enabled explicitly: with
 # default-features = false the persistent store silently falls back to

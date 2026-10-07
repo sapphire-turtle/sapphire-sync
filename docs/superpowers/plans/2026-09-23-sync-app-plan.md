@@ -150,10 +150,15 @@ Constraints).
 - Code, comments, commit messages and tests in **English**; READMEs in English and
   Japanese, cross-linked at the top (the family `CONTRIBUTING.md` rule).
 - CI runs `cargo fmt --all -- --check`, `cargo clippy --all-targets --all-features --
-  -D warnings`, `cargo test --all-features --locked`, and the dependency guard:
-  `cargo tree -p sapphire-sync -i sapphire-framework-retrieve` must output **nothing**
-  (the feature list — `server` (implies `backend`+`workspace`), `sync`, `bridge`,
-  `redb-store` — already guarantees it; the check is the guard).
+  -D warnings`, `cargo test --all-features --locked`, and the dependency guard: the
+  default build's `cargo tree -p sapphire-sync` must contain **no** `fastembed`, `ort`
+  or `ort-sys` — the embedding stack, the heavy part of search. `default-features =
+  false` already guarantees it; the check is the guard.
+  *(Corrected 2026-10-07. The original guard required `sapphire-framework-retrieve`
+  itself to be absent, assuming the feature list kept it out. It never did — the
+  framework's workspace layer depends on retrieve unconditionally — and retrieve is
+  meant to be in every app, a future `sapphire-sync find` included. Without
+  `fastembed-embed` it brings only full-text search.)*
 - The framework dependency stays `{ git = "…/sapphire-framework", branch =
   "feat/p2p-sync-iroh", default-features = false, … }` until that branch merges and releases
   v0.1.0, then re-pins to the tag — the only allowed change to the dependency line (and it
@@ -482,8 +487,9 @@ file tree on both sides is the assertion (file-by-file compare of the two roots)
       versions survive); the "no server is running" contract (one-shot commands never start
       the daemon).
 - [ ] **CI:** the four CI commands from Global Constraints as one workflow
-      (ubuntu + windows matrix; `cargo tree -p sapphire-sync -i sapphire-framework-retrieve`
-      must print nothing — assert empty).
+      (ubuntu + windows matrix; the dependency guard greps the full `cargo tree -p
+      sapphire-sync` for `fastembed`/`ort`/`ort-sys` and asserts none — not `cargo tree
+      -i`, which errors when the crate is absent).
 - [ ] **CONTRIBUTING.md:** this repository's rule (two-crate layout `cli/` +
       `crates/sapphire-sync-core/`, the thin-CLI rule — everything the framework provides
       stays the framework's, tests live in `cli/tests/`); link the framework repo's
