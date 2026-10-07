@@ -113,3 +113,65 @@ fn walkdir(root: &std::path::Path) -> Vec<String> {
     }
     out
 }
+
+// DIAG(issue #3): the cross-write step alone, with the nested path moved around.
+async fn diag_cross(label: &str, a_rel: &str, b_rel: &str) {
+    common::init_tracing();
+    let net = LoopbackNetwork::new();
+    let (a, b) = common::synced_pair(&net).await;
+    let start = std::time::Instant::now();
+    common::write(&a, a_rel, "from a");
+    common::write(&b, b_rel, "from b");
+    let (mut a_to_b, mut b_to_a) = (None, None);
+    while a_to_b.is_none() || b_to_a.is_none() {
+        if a_to_b.is_none() && b.ws.join(a_rel).exists() {
+            a_to_b = Some(start.elapsed());
+        }
+        if b_to_a.is_none() && a.ws.join(b_rel).exists() {
+            b_to_a = Some(start.elapsed());
+        }
+        assert!(
+            start.elapsed() < std::time::Duration::from_secs(10),
+            "DIAG {label} never converged: A->B={a_to_b:?} B->A={b_to_a:?}"
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    eprintln!("DIAGV {label}: A->B({a_rel})={a_to_b:?} B->A({b_rel})={b_to_a:?}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn diag_nested_on_a() {
+    diag_cross("nested_on_a", "meeting/notes.md", "readme.md").await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn diag_nested_on_b() {
+    diag_cross("nested_on_b", "readme.md", "meeting/notes.md").await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn diag_flat_both() {
+    diag_cross("flat_both", "a.md", "b.md").await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn diag_nested_existing_dir_on_a() {
+    // The directory exists (and is synced) before the timed write.
+    common::init_tracing();
+    let net = LoopbackNetwork::new();
+    let (a, b) = common::synced_pair(&net).await;
+    common::write(&a, "meeting/seed.md", "seed");
+    common::poll_until(
+        || b.ws.join("meeting/seed.md").exists().then_some(()),
+        "seed",
+    )
+    .await;
+    let start = std::time::Instant::now();
+    common::write(&a, "meeting/notes.md", "from a");
+    common::poll_until(
+        || b.ws.join("meeting/notes.md").exists().then_some(()),
+        "notes",
+    )
+    .await;
+    eprintln!("DIAGV existing_dir_on_a: A->B={:?}", start.elapsed());
+}

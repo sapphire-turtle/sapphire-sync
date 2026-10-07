@@ -1,7 +1,6 @@
 name: DIAG issue-3
 
-# Temporary: exists only on diag/issue-3-propagate. Runs the propagate scenario
-# repeatedly with debug logs and prints the output of failing iterations only.
+# Temporary: exists only on diag/issue-3-propagate.
 on:
   push:
     branches: [diag/issue-3-propagate]
@@ -18,20 +17,19 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
       - name: Build
         run: cargo test --locked --test propagate --no-run
-      - name: Repeat
+      - name: One nested_on_a run with full debug log
         shell: bash
         env:
-          RUST_LOG: warn,sapphire_framework_server::sync=debug,sapphire_framework_session=debug,sapphire_framework_bridge=debug
+          RUST_LOG: debug,hyper=info,h2=info,tantivy=info,redb=info
         run: |
-          fails=0
-          for i in $(seq 1 30); do
-            if cargo test --locked --test propagate -- --nocapture > run.log 2>&1; then
-              echo "iteration $i: ok  $(grep -h 'DIAG A->B\|DIAG B->A' run.log | tr '\n' ' ')"
-            else
-              fails=$((fails+1))
-              echo "::group::iteration $i FAILED"
-              cat run.log
-              echo "::endgroup::"
-            fi
+          cargo test --locked --test propagate diag_nested_on_a -- --exact --nocapture > one.log 2>&1 || true
+          echo "lines: $(wc -l < one.log)"
+          cat one.log
+      - name: Variants x10
+        shell: bash
+        run: |
+          for t in diag_nested_on_a diag_nested_on_b diag_flat_both diag_nested_existing_dir_on_a; do
+            for i in $(seq 1 10); do
+              cargo test --locked --test propagate $t -- --exact --nocapture 2>&1 | grep -E "DIAGV|DIAG .* never|test result: FAILED" || echo "$t #$i: no output"
+            done
           done
-          echo "failures: $fails / 30"
