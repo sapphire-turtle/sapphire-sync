@@ -120,8 +120,11 @@ async fn diag_cross(label: &str, a_rel: &str, b_rel: &str) {
     let net = LoopbackNetwork::new();
     let (a, b) = common::synced_pair(&net).await;
     let start = std::time::Instant::now();
+    tracing::warn!(a = %a.ws.display(), b = %b.ws.display(), "DIAG WRITE begin");
     common::write(&a, a_rel, "from a");
+    tracing::warn!("DIAG WRITE a done");
     common::write(&b, b_rel, "from b");
+    tracing::warn!("DIAG WRITE b done");
     let (mut a_to_b, mut b_to_a) = (None, None);
     while a_to_b.is_none() || b_to_a.is_none() {
         if a_to_b.is_none() && b.ws.join(a_rel).exists() {
