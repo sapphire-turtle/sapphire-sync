@@ -23,6 +23,9 @@ jobs:
           RUST_LOG: warn,sapphire_framework_server::sync=debug,sapphire_framework_session=debug
           NO_COLOR: "1"
         run: |
+          echo "=================== idle"
+          cargo test --locked --test propagate diag_idle -- --exact --nocapture 2>&1 \
+            | grep -E "DIAG (IDLE|watcher report|scan done|debounce)" || true
           for i in $(seq 1 5); do
             echo "=================== iteration $i"
             cargo test --locked --test propagate diag_flat_both -- --exact --nocapture 2>&1 \

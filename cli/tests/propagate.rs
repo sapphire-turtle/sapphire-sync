@@ -178,3 +178,14 @@ async fn diag_nested_existing_dir_on_a() {
     .await;
     eprintln!("DIAGV existing_dir_on_a: A->B={:?}", start.elapsed());
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn diag_idle() {
+    // DIAG(issue #3): nothing is written; does the watcher keep reporting anyway?
+    common::init_tracing();
+    let net = LoopbackNetwork::new();
+    let (_a, _b) = common::synced_pair(&net).await;
+    tracing::warn!("DIAG IDLE begin");
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    tracing::warn!("DIAG IDLE end");
+}
