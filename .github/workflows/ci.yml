@@ -43,15 +43,23 @@ jobs:
         shell: bash
         run: cargo test --all-features --locked
 
-      # The dependency guard: a sync-only app must not pull in the search
-      # stack. `cargo tree -i` prints the reverse-dependency tree; the guard
-      # passes only when it is empty.
-      - name: Dependency guard (no search stack)
+      # The dependency guard: the default build must not pull in the embedding
+      # stack (fastembed and the ONNX Runtime behind it), which is the heavy
+      # part of search. `sapphire-framework-retrieve` itself is expected: the
+      # framework's workspace layer depends on it in every app, and with
+      # `default-features = false` it brings only full-text search.
+      #
+      # The whole tree is listed and grepped rather than asked with
+      # `cargo tree -i fastembed`, which fails outright ("did not match any
+      # packages") when the crate is absent — the very case that should pass.
+      # Default features only, so an opt-in feature may still enable it.
+      - name: Dependency guard (no embedding stack)
         shell: bash
         run: |
-          out=$(cargo tree -p sapphire-sync -i sapphire-framework-retrieve)
+          out=$(cargo tree -p sapphire-sync --locked --prefix none --format '{p}' \
+            | grep -E '^(fastembed|ort|ort-sys) v' | sort -u || true)
           if [ -n "$out" ]; then
-            echo "::error::sapphire-framework-retrieve leaked into the graph:"
+            echo "::error::the embedding stack leaked into the default graph:"
             echo "$out"
             exit 1
           fi
