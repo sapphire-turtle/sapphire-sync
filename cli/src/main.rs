@@ -59,7 +59,15 @@ async fn run(cli: cli::Cli) -> anyhow::Result<()> {
             let code = sync::dispatch(command, cli.workspace.workspace_dir).await?;
             std::process::exit(code);
         }
-        // Every framework verb. One-shots dispatch against a bridge-less
+        // An explicit `serve` is the same server as a bare invocation — and
+        // the one the service manager starts (`service_spec` is `["serve"]`),
+        // so it must get the sync-mounted server, not the one-shot one.
+        Some(cli::AppCommand::Framework(FrameworkCommand::Serve)) => {
+            let server = server::build_serve().await?;
+            let code = FrameworkCommand::Serve.dispatch(server, version).await?;
+            std::process::exit(code);
+        }
+        // Every other framework verb. One-shots dispatch against a bridge-less
         // server — `status` on a host without a running server must say the
         // framework's "no … server is running", not a bridge error — and the
         // exit code is the process's.

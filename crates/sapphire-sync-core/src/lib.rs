@@ -5,7 +5,8 @@
 //! facade re-export; the sync logic lands in later tasks.
 //!
 //! It builds on the `sapphire-framework` facade with the `server` / `sync`
-//! features only — no search stack (`retrieve`).
+//! features. No search is exposed yet; the framework's `retrieve` comes along
+//! without its embedding stack (`fastembed-embed` stays off).
 
 #![warn(missing_docs)]
 

@@ -258,6 +258,7 @@ async fn disable_unregisters_flips_the_row_and_reenables_with_the_same_id() {
     let info = sapphire_ipc::ClientInfo {
         kind: "test".into(),
         version: env!("CARGO_PKG_VERSION").to_owned(),
+        api: proto::API_VERSION,
         pid: std::process::id(),
     };
     let (client, _) = sapphire_ipc::connect_or_absent(&endpoint, CTX.app_name, info)
