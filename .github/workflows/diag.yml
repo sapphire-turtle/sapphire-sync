@@ -1,12 +1,13 @@
 name: DIAG issue-3
 
-# Temporary: exists only on diag/issue-3-propagate.
+# Temporary: exists only on diag/issue-3-propagate. Now verifies the fix
+# (sapphire-framework fix/watcher-ignore-access).
 on:
   push:
     branches: [diag/issue-3-propagate]
 
 jobs:
-  repeat:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -17,17 +18,24 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
       - name: Build
         run: cargo test --locked --test propagate --no-run
-      - name: flat_both x5 with DIAG logs
+      - name: Cross-write timings
         shell: bash
-        env:
-          RUST_LOG: warn,sapphire_framework_server::sync=debug,sapphire_framework_session=debug
-          NO_COLOR: "1"
         run: |
-          echo "=================== idle"
-          cargo test --locked --test propagate diag_idle -- --exact --nocapture 2>&1 \
-            | grep -E "DIAG (IDLE|watcher report|scan done|debounce)" || true
-          for i in $(seq 1 5); do
-            echo "=================== iteration $i"
-            cargo test --locked --test propagate diag_flat_both -- --exact --nocapture 2>&1 \
-              | grep -E "DIAG|session complete" | sed 's/\x1b\[[0-9;]*m//g' || true
+          for t in diag_flat_both diag_nested_on_a; do
+            for i in $(seq 1 10); do
+              cargo test --locked --test propagate $t -- --exact --nocapture 2>&1 \
+                | grep -E "DIAGV|never converged" || echo "$t #$i: no output"
+            done
           done
+      - name: pair_and_propagate x30
+        shell: bash
+        run: |
+          fails=0
+          for i in $(seq 1 30); do
+            if ! cargo test --locked --test propagate pair_and_propagate -- --exact > run.log 2>&1; then
+              fails=$((fails+1))
+              echo "iteration $i FAILED"
+              grep -E "panicked|DIAG" run.log
+            fi
+          done
+          echo "failures: $fails / 30"
