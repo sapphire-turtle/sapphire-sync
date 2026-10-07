@@ -62,6 +62,12 @@ $ sapphire-sync workspace list      # 全デバイスにワークスペースが
 service」ボタンが見つけられるよう `sapphire-sync` と `sapphire-bridge` の
 隣に置いて配布してください。
 
+Windows では Vulkan で描画します。DX12 のデバイスはリモートデスクトップの
+再接続のたびに失われるためです。それ以外の OS では wgpu の通常の選択に
+任せます。`WGPU_BACKEND` で上書きできます。Windows で起動時にクラッシュする
+場合（Vulkan のオーバーレイレイヤーが原因になることがあります）は、
+`WGPU_BACKEND=dx12` を付けて起動してください。
+
 ## リンク
 
 - [sapphire-framework](https://github.com/fluo10/sapphire-framework) — このアプリが

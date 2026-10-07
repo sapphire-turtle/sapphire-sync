@@ -2,11 +2,13 @@
 
 //! Renderer setup: backend selection, logging, and device-loss reporting.
 //!
-//! The app asks for Vulkan rather than letting wgpu pick. On Windows the DX12
+//! On Windows the app asks for Vulkan rather than letting wgpu pick: the DX12
 //! device is removed whenever a Remote Desktop session reconnects or the display
 //! configuration changes, and egui-wgpu turns that into an unrecoverable panic
-//! (see [`device_lost_explanation`]). `WGPU_BACKEND` still overrides the choice,
-//! so `WGPU_BACKEND=dx12` restores the previous behaviour.
+//! (see [`device_lost_explanation`]). Every other OS gets wgpu's primary
+//! backends. `WGPU_BACKEND` overrides the choice everywhere, so
+//! `WGPU_BACKEND=dx12` is the escape hatch on Windows when Vulkan misbehaves
+//! (for example, a Vulkan overlay layer that crashes the app).
 
 use eframe::{egui_wgpu, wgpu};
 
@@ -34,14 +36,25 @@ pub fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
     options
 }
 
-/// Vulkan only, unless `WGPU_BACKEND` says otherwise.
+/// [`default_backends`], unless `WGPU_BACKEND` says otherwise.
 fn backends() -> wgpu::Backends {
-    wgpu::Backends::from_env().unwrap_or(wgpu::Backends::VULKAN)
+    wgpu::Backends::from_env().unwrap_or_else(default_backends)
+}
+
+/// Vulkan on Windows, where DX12 loses its device on every Remote Desktop
+/// reconnect; wgpu's primary backends (Vulkan, Metal, DX12, browser WebGPU)
+/// everywhere else, so macOS gets Metal and Linux picks what it has.
+fn default_backends() -> wgpu::Backends {
+    if cfg!(windows) {
+        wgpu::Backends::VULKAN
+    } else {
+        wgpu::Backends::PRIMARY
+    }
 }
 
 /// Report which adapter was chosen and arm the device-loss callback.
 ///
-/// The startup line is how you confirm the Vulkan backend actually took effect.
+/// The startup line is how you confirm which backend actually took effect.
 pub fn on_render_state(render_state: Option<&egui_wgpu::RenderState>) {
     let Some(render_state) = render_state else {
         tracing::warn!("no wgpu render state; skipping GPU diagnostics");
@@ -152,9 +165,29 @@ mod tests {
         assert_eq!(device_lost_explanation(""), None);
     }
 
+    #[cfg(windows)]
     #[test]
-    fn defaults_to_vulkan_without_an_env_override() {
+    fn defaults_to_vulkan_on_windows_without_an_env_override() {
         // `backends()` reads WGPU_BACKEND, which is not set in the test harness.
         assert_eq!(backends(), wgpu::Backends::VULKAN);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn defaults_to_the_primary_backends_elsewhere_without_an_env_override() {
+        // `backends()` reads WGPU_BACKEND, which is not set in the test harness.
+        assert_eq!(backends(), wgpu::Backends::PRIMARY);
+    }
+
+    #[test]
+    fn the_default_is_vulkan_only_on_windows() {
+        assert_eq!(
+            default_backends(),
+            if cfg!(windows) {
+                wgpu::Backends::VULKAN
+            } else {
+                wgpu::Backends::PRIMARY
+            }
+        );
     }
 }

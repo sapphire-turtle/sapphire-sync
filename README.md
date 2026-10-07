@@ -64,6 +64,11 @@ window does not stop sync. Build it with
 `sapphire-sync` and `sapphire-bridge`, so its "Install & start service" buttons
 can find them.
 
+On Windows it renders with Vulkan, because the DX12 device is lost whenever a
+Remote Desktop session reconnects; elsewhere wgpu picks its usual backend. Set
+`WGPU_BACKEND` to override this. If the app crashes at start on Windows (a
+Vulkan overlay layer can do that), run it with `WGPU_BACKEND=dx12`.
+
 ## Links
 
 - [sapphire-framework](https://github.com/fluo10/sapphire-framework) — the
