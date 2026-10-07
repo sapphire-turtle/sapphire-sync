@@ -17,19 +17,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
       - name: Build
         run: cargo test --locked --test propagate --no-run
-      - name: One nested_on_a run with full debug log
+      - name: flat_both x5 with DIAG logs
         shell: bash
         env:
-          RUST_LOG: debug,hyper=info,h2=info,tantivy=info,redb=info
+          RUST_LOG: warn,sapphire_framework_server::sync=debug,sapphire_framework_session=debug
+          NO_COLOR: "1"
         run: |
-          cargo test --locked --test propagate diag_nested_on_a -- --exact --nocapture > one.log 2>&1 || true
-          echo "lines: $(wc -l < one.log)"
-          cat one.log
-      - name: Variants x10
-        shell: bash
-        run: |
-          for t in diag_nested_on_a diag_nested_on_b diag_flat_both diag_nested_existing_dir_on_a; do
-            for i in $(seq 1 10); do
-              cargo test --locked --test propagate $t -- --exact --nocapture 2>&1 | grep -E "DIAGV|DIAG .* never|test result: FAILED" || echo "$t #$i: no output"
-            done
+          for i in $(seq 1 5); do
+            echo "=================== iteration $i"
+            cargo test --locked --test propagate diag_flat_both -- --exact --nocapture 2>&1 \
+              | grep -E "DIAG|session complete" | sed 's/\x1b\[[0-9;]*m//g' || true
           done

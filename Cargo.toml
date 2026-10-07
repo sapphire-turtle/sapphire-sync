@@ -55,3 +55,11 @@ sapphire-sync-core = { path = "crates/sapphire-sync-core", version = "0.1.0" }
 
 [profile.dev.package."*"]
 opt-level = 1
+
+# DIAG(#3): temporary, points every framework crate at the instrumented branch.
+[patch."https://github.com/fluo10/sapphire-framework"]
+sapphire-framework = { git = "https://github.com/sapphire-turtle/sapphire-framework", branch = "diag/issue-3-propagate" }
+sapphire-framework-bridge-api = { git = "https://github.com/sapphire-turtle/sapphire-framework", branch = "diag/issue-3-propagate" }
+sapphire-framework-server = { git = "https://github.com/sapphire-turtle/sapphire-framework", branch = "diag/issue-3-propagate" }
+sapphire-framework-ipc = { git = "https://github.com/sapphire-turtle/sapphire-framework", branch = "diag/issue-3-propagate" }
+sapphire-framework-bridge = { git = "https://github.com/sapphire-turtle/sapphire-framework", branch = "diag/issue-3-propagate" }
