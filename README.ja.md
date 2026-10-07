@@ -53,6 +53,15 @@ $ sapphire-sync workspace list      # 全デバイスにワークスペースが
 ワンショットの動詞はサーバーを起動しません。サーバーがリッスンしていないとき、コマンドは
 `no sapphire-sync server is running` と表示し、終了コード 1 を返します。
 
+## デスクトップアプリ
+
+`sapphire-sync-desktop` は、インストール済みサービスの GUI クライアントです。
+フレームワークの同期パネルを表示するだけで、サーバーもブリッジも自分では
+起動しません。ウィンドウを閉じても同期は止まりません。
+`cargo build -p sapphire-sync-desktop --release` でビルドし、「Install & start
+service」ボタンが見つけられるよう `sapphire-sync` と `sapphire-bridge` の
+隣に置いて配布してください。
+
 ## リンク
 
 - [sapphire-framework](https://github.com/fluo10/sapphire-framework) — このアプリが
