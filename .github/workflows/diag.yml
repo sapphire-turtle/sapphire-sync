@@ -1,0 +1,37 @@
+name: DIAG issue-3
+
+# Temporary: exists only on diag/issue-3-propagate. Runs the propagate scenario
+# repeatedly with debug logs and prints the output of failing iterations only.
+on:
+  push:
+    branches: [diag/issue-3-propagate]
+
+jobs:
+  repeat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the pinned toolchain
+        run: cargo --version
+      - uses: Swatinem/rust-cache@v2
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Build
+        run: cargo test --locked --test propagate --no-run
+      - name: Repeat
+        shell: bash
+        env:
+          RUST_LOG: warn,sapphire_framework_server::sync=debug,sapphire_framework_session=debug,sapphire_framework_bridge=debug
+        run: |
+          fails=0
+          for i in $(seq 1 30); do
+            if cargo test --locked --test propagate -- --nocapture > run.log 2>&1; then
+              echo "iteration $i: ok  $(grep -h 'DIAG A->B\|DIAG B->A' run.log | tr '\n' ' ')"
+            else
+              fails=$((fails+1))
+              echo "::group::iteration $i FAILED"
+              cat run.log
+              echo "::endgroup::"
+            fi
+          done
+          echo "failures: $fails / 30"

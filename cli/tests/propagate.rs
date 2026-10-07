@@ -59,18 +59,57 @@ async fn pair_and_propagate() {
 
     // 4. The same tree on both sides, file by file — after one more write from each
     //    side, so the final compare is of live content, not of an emptied workspace.
+    // DIAG(issue #3): record when each direction lands, and dump state on timeout.
+    let ok = |h: &common::Host, rel: &str, text: &str| {
+        std::fs::read_to_string(h.ws.join(rel)).ok().as_deref() == Some(text)
+    };
+    let start = std::time::Instant::now();
     common::write(&a, "meeting/notes.md", "agreed");
     common::write(&b, "readme.md", "host b wrote this");
-    common::poll_until(
-        || {
-            let ok = |h: &common::Host, rel: &str, text: &str| {
-                std::fs::read_to_string(h.ws.join(rel)).ok().as_deref() == Some(text)
-            };
-            (ok(&a, "readme.md", "host b wrote this") && ok(&b, "meeting/notes.md", "agreed"))
-                .then_some(())
-        },
-        "the final cross-writes never converged",
-    )
-    .await;
+    eprintln!("DIAG step4 writes done at {:?}", start.elapsed());
+    let (mut a_to_b, mut b_to_a) = (None, None);
+    loop {
+        if a_to_b.is_none() && ok(&b, "meeting/notes.md", "agreed") {
+            a_to_b = Some(start.elapsed());
+            eprintln!("DIAG A->B (meeting/notes.md on B) at {:?}", a_to_b.unwrap());
+        }
+        if b_to_a.is_none() && ok(&a, "readme.md", "host b wrote this") {
+            b_to_a = Some(start.elapsed());
+            eprintln!("DIAG B->A (readme.md on A) at {:?}", b_to_a.unwrap());
+        }
+        if a_to_b.is_some() && b_to_a.is_some() {
+            break;
+        }
+        if start.elapsed() > std::time::Duration::from_secs(10) {
+            for (name, h) in [("A", &a), ("B", &b)] {
+                let rt = h.runtime().unwrap();
+                let mut files: Vec<String> = walkdir(&h.ws);
+                files.sort();
+                eprintln!(
+                    "DIAG {name}: files={files:?} live={:?} status={:?}",
+                    rt.live_session_devices(&h.ws).await,
+                    rt.status(&h.ws).await,
+                );
+            }
+            panic!("DIAG never converged: A->B={a_to_b:?} B->A={b_to_a:?}");
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+    }
     common::assert_roots_match(&a, &b);
+}
+
+fn walkdir(root: &std::path::Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                out.push(p.strip_prefix(root).unwrap().display().to_string());
+            }
+        }
+    }
+    out
 }
