@@ -19,11 +19,13 @@ clap.workspace = true
 # The bridge client and `ManagedBy`: the facade does not re-export -bridge-api.
 sapphire-bridge-api.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
-tracing.workspace = true
-tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
 tempfile.workspace = true
+# The e2e harness's `init_tracing` installs a warn-level subscriber so scenario
+# runs emit framework logs on failure only. The app's own logging is the
+# framework's business (`workspace::logging`), not this crate's.
+tracing-subscriber = { workspace = true }
 # The sync/serve tests take the server crate's `StubBridge` (the in-process
 # bridge stand-in over a `Connection::pair`) from its `test-util` feature, and
 # `probe` the endpoint while a server starts. `Endpoint` itself comes through
