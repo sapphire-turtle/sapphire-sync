@@ -33,7 +33,7 @@ sapphire-ipc.workspace = true
 # The e2e harness builds real bridges: `LoopbackNetwork`, `NetConfig` and the
 # endpoint-taking constructors ride behind the bridge crate's `test-util`
 # feature (the facade does not expose it).
-sapphire-framework-bridge = { package = "sapphire-framework-bridge", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/sync-gui", features = ["test-util"] }
+sapphire-framework-bridge = { package = "sapphire-framework-bridge", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", features = ["test-util"] }
 # The harness parses and rewrites one device-record field (`introduce`'s
 # `~`-prefixed ledger copies).
 toml.workspace = true

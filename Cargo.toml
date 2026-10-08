@@ -28,20 +28,20 @@ grain-id = { version = "0.16", features = ["serde"] }
 # probe it while a server starts. `redb-store` must be enabled explicitly: with
 # default-features = false the persistent store silently falls back to
 # in-memory otherwise.
-sapphire-framework = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/sync-gui", default-features = false, features = ["server", "sync", "bridge", "ipc", "redb-store"] }
+sapphire-framework = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", default-features = false, features = ["server", "sync", "bridge", "ipc", "redb-store"] }
 # The bridge control-plane client an app server speaks (`BridgeClient`,
 # `ManagedBy`). It lives in `sapphire-framework-bridge-api`, which the facade
 # does not re-export (the facade's `bridge` module is the daemon side), so it is
 # a direct dependency of the CLI on the same git source.
-sapphire-bridge-api = { package = "sapphire-framework-bridge-api", version = "2", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/sync-gui" }
+sapphire-bridge-api = { package = "sapphire-framework-bridge-api", version = "2", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh" }
 # Test-only: the server crate's `StubBridge` rides behind `test-util`, which the
 # facade does not expose, so tests reach the crate directly.
-sapphire-framework-server = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/sync-gui", default-features = false, features = ["test-util"] }
+sapphire-framework-server = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", default-features = false, features = ["test-util"] }
 # Test-only: `probe` (is anything listening?) while a server starts, and the
 # direct client handshake (`ClientInfo`, `connect_or_absent`) the sync tests
 # use to ride the framework's `sync.enable` path the way `workspace init
 # --sync` does.
-sapphire-ipc = { package = "sapphire-framework-ipc", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/sync-gui" }
+sapphire-ipc = { package = "sapphire-framework-ipc", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"

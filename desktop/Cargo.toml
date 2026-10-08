@@ -8,7 +8,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-sapphire-framework = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/sync-gui", default-features = false, features = ["gui"] }
+sapphire-framework = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", default-features = false, features = ["gui"] }
 eframe = "0.36"
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 tracing.workspace = true
