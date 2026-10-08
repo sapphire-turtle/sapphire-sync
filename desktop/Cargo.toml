@@ -1,0 +1,15 @@
+[package]
+name = "sapphire-sync-desktop"
+version = "0.1.0"
+edition.workspace = true
+description = "Desktop GUI for sapphire-sync"
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+sapphire-framework = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", default-features = false, features = ["gui"] }
+eframe = "0.36"
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true

@@ -1,0 +1,23 @@
+[package]
+name = "sapphire-sync-core"
+version = "0.1.0"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+categories = ["filesystem", "data-structures"]
+keywords = ["sync", "p2p", "file-sync", "local-first"]
+
+[dependencies]
+sapphire-framework.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+grain-id.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+toml.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -1,0 +1,58 @@
+[workspace]
+members = [
+    "cli",
+    "desktop",
+    "crates/sapphire-sync-core",
+]
+default-members = ["cli"]
+resolver = "3"
+
+[workspace.package]
+description = "A sync-only reference app for sapphire-framework - simple P2P file sync over iroh, CLI with embedded server"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/sapphire-turtle/sapphire-sync"
+edition = "2024"
+
+[workspace.dependencies]
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive", "env"] }
+grain-id = { version = "0.16", features = ["serde"] }
+# The framework facade. A sync app needs the server/sync stack plus the bridge
+# module (Task 4's e2e harness runs real bridges through it). `retrieve` comes
+# in through `workspace` regardless, but only its full-text half: the
+# embedding stack (`fastembed-embed`) stays off, and CI guards that. The
+# `server` feature implies `backend` + `workspace`, which is where AppContext
+# lives. `ipc` is the transport: the CLI's own one-shot
+# verbs connect over it (`Endpoint`, Task 3's `sync disable`) and the tests
+# probe it while a server starts. `redb-store` must be enabled explicitly: with
+# default-features = false the persistent store silently falls back to
+# in-memory otherwise.
+sapphire-framework = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", default-features = false, features = ["server", "sync", "bridge", "ipc", "redb-store"] }
+# The bridge control-plane client an app server speaks (`BridgeClient`,
+# `ManagedBy`). It lives in `sapphire-framework-bridge-api`, which the facade
+# does not re-export (the facade's `bridge` module is the daemon side), so it is
+# a direct dependency of the CLI on the same git source.
+sapphire-bridge-api = { package = "sapphire-framework-bridge-api", version = "2", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh" }
+# Test-only: the server crate's `StubBridge` rides behind `test-util`, which the
+# facade does not expose, so tests reach the crate directly.
+sapphire-framework-server = { git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", default-features = false, features = ["test-util"] }
+# Test-only: `probe` (is anything listening?) while a server starts, and the
+# direct client handshake (`ClientInfo`, `connect_or_absent`) the sync tests
+# use to ride the framework's `sync.enable` path the way `workspace init
+# --sync` does.
+sapphire-ipc = { package = "sapphire-framework-ipc", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+thiserror = "2"
+tokio = { version = "1" }
+toml = "1.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# local crates
+sapphire-sync-core = { path = "crates/sapphire-sync-core", version = "0.1.0" }
+
+[profile.dev.package."*"]
+opt-level = 1

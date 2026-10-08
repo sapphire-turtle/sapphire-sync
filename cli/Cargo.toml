@@ -1,0 +1,39 @@
+[package]
+name = "sapphire-sync"
+version = "0.1.0"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+categories = ["command-line-utilities"]
+keywords = ["sync", "p2p", "file-sync", "local-first"]
+
+[[bin]]
+name = "sapphire-sync"
+path = "src/main.rs"
+
+[dependencies]
+sapphire-sync-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+# The bridge client and `ManagedBy`: the facade does not re-export -bridge-api.
+sapphire-bridge-api.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
+tracing.workspace = true
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+tempfile.workspace = true
+# The sync/serve tests take the server crate's `StubBridge` (the in-process
+# bridge stand-in over a `Connection::pair`) from its `test-util` feature, and
+# `probe` the endpoint while a server starts. `Endpoint` itself comes through
+# the facade's `ipc` module, like the CLI's own code.
+sapphire-framework-server.workspace = true
+sapphire-ipc.workspace = true
+# The e2e harness builds real bridges: `LoopbackNetwork`, `NetConfig` and the
+# endpoint-taking constructors ride behind the bridge crate's `test-util`
+# feature (the facade does not expose it).
+sapphire-framework-bridge = { package = "sapphire-framework-bridge", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", features = ["test-util"] }
+# The harness parses and rewrites one device-record field (`introduce`'s
+# `~`-prefixed ledger copies).
+toml.workspace = true
