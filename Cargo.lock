@@ -1954,7 +1954,6 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml",
- "tracing",
  "tracing-subscriber",
 ]
 
@@ -1971,7 +1970,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "toml",
- "tracing",
 ]
 
 [[package]]
