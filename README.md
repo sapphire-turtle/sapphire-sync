@@ -55,6 +55,20 @@ overwritten; conflicts are resolved by hand, the Syncthing way.
 One-shot verbs never start the daemon. When no server is listening they print
 `no sapphire-sync server is running` and exit 1.
 
+## Desktop app
+
+`sapphire-sync-desktop` is a GUI client of the installed services: it shows the
+framework's sync panel and never runs a server or bridge itself, so closing the
+window does not stop sync. Build it with
+`cargo build -p sapphire-sync-desktop --release` and ship it beside
+`sapphire-sync` and `sapphire-bridge`, so its "Install & start service" buttons
+can find them.
+
+On Windows it renders with Vulkan, because the DX12 device is lost whenever a
+Remote Desktop session reconnects; elsewhere wgpu picks its usual backend. Set
+`WGPU_BACKEND` to override this. If the app crashes at start on Windows (a
+Vulkan overlay layer can do that), run it with `WGPU_BACKEND=dx12`.
+
 ## Links
 
 - [sapphire-framework](https://github.com/fluo10/sapphire-framework) — the

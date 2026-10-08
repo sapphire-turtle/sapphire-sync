@@ -53,6 +53,21 @@ $ sapphire-sync workspace list      # 全デバイスにワークスペースが
 ワンショットの動詞はサーバーを起動しません。サーバーがリッスンしていないとき、コマンドは
 `no sapphire-sync server is running` と表示し、終了コード 1 を返します。
 
+## デスクトップアプリ
+
+`sapphire-sync-desktop` は、インストール済みサービスの GUI クライアントです。
+フレームワークの同期パネルを表示するだけで、サーバーもブリッジも自分では
+起動しません。ウィンドウを閉じても同期は止まりません。
+`cargo build -p sapphire-sync-desktop --release` でビルドし、「Install & start
+service」ボタンが見つけられるよう `sapphire-sync` と `sapphire-bridge` の
+隣に置いて配布してください。
+
+Windows では Vulkan で描画します。DX12 のデバイスはリモートデスクトップの
+再接続のたびに失われるためです。それ以外の OS では wgpu の通常の選択に
+任せます。`WGPU_BACKEND` で上書きできます。Windows で起動時にクラッシュする
+場合（Vulkan のオーバーレイレイヤーが原因になることがあります）は、
+`WGPU_BACKEND=dx12` を付けて起動してください。
+
 ## リンク
 
 - [sapphire-framework](https://github.com/fluo10/sapphire-framework) — このアプリが
