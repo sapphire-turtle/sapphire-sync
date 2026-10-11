@@ -17,7 +17,7 @@ local IPC endpoint.
 $ sapphire-bridge serve &            # the always-on peer (sapphire-bridge app)
 $ sapphire-sync workspace init --sync ~/Documents/notes
 $ sapphire-sync serve &             # this host's sync node
-$ sapphire-sync workspace list      # shows the workspace on every device
+$ sapphire-sync workspace show      # this host's workspace, then the workgroup's
 ```
 
 The framework's own verbs (`workgroup create`, `device invite`, `workgroup join`)
@@ -28,8 +28,9 @@ unchanged.
 
 This repository ships one binary: the app server plus the CLI. The always-on
 peer it talks to is the `sapphire-bridge` app; run exactly one
-`sapphire-sync serve` per host. The `SyncRuntime` mounts one replica per synced
-workspace root and registers it with the bridge; the app itself implements
+`sapphire-sync serve` per host. The server serves one workspace at a time
+(`workspace select` switches it); the `SyncRuntime` mounts its replica and
+registers it with the bridge; the app itself implements
 nothing of the replication engine.
 
 ## Status output

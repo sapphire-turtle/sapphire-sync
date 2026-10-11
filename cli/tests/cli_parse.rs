@@ -73,7 +73,8 @@ fn the_workspace_subcommands_parse() {
         vec!["workspace", "init"],
         vec!["workspace", "init", "notes"],
         vec!["workspace", "init", "--sync"],
-        vec!["workspace", "list"],
+        vec!["workspace", "select", "notes"],
+        vec!["workspace", "show"],
         vec!["workspace", "map", "notes", "/srv/notes"],
     ] {
         let cli = parse(&args);
@@ -113,7 +114,7 @@ fn the_global_workspace_dir_parses_everywhere() {
     for args in [
         vec!["--workspace-dir", "/tmp/x", "status"],
         vec!["status", "--workspace-dir", "/tmp/x"],
-        vec!["workspace", "list", "--workspace-dir", "/tmp/x"],
+        vec!["workspace", "show", "--workspace-dir", "/tmp/x"],
         vec!["sync", "disable", "--workspace-dir", "/tmp/x"],
     ] {
         let cli = parse(&args);

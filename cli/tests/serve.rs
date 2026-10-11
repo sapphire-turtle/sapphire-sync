@@ -198,7 +198,7 @@ async fn status_against_a_running_server_prints_running_true() {
         &CTX,
         bridge_client,
         std::env::current_exe().unwrap(),
-        sapphire_bridge_api::ManagedBy::Service,
+        sapphire_ipc::ManagedBy::Service,
     ));
     let server = AppServer::new(&CTX, env!("CARGO_PKG_VERSION")).sync(runtime);
     let endpoint = Endpoint::for_app(CTX.app_name).unwrap();

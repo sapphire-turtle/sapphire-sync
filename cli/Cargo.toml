@@ -15,13 +15,16 @@ path = "src/main.rs"
 [dependencies]
 sapphire-sync-core.workspace = true
 anyhow.workspace = true
+serde_json.workspace = true
 clap.workspace = true
-# The bridge client and `ManagedBy`: the facade does not re-export -bridge-api.
-sapphire-bridge-api.workspace = true
+# The bridge client: the facade does not re-export -bridge-client.
+sapphire-bridge-client.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 
 [dev-dependencies]
 tempfile.workspace = true
+# The e2e harness's bridge registrations (`GrainId`, the bridge's `ManagedBy`).
+sapphire-bridge-api.workspace = true
 # The e2e harness's `init_tracing` installs a warn-level subscriber so scenario
 # runs emit framework logs on failure only. The app's own logging is the
 # framework's business (`workspace::logging`), not this crate's.
@@ -35,7 +38,7 @@ sapphire-ipc.workspace = true
 # The e2e harness builds real bridges: `LoopbackNetwork`, `NetConfig` and the
 # endpoint-taking constructors ride behind the bridge crate's `test-util`
 # feature (the facade does not expose it).
-sapphire-framework-bridge = { package = "sapphire-framework-bridge", git = "https://github.com/fluo10/sapphire-framework", branch = "feat/p2p-sync-iroh", features = ["test-util"] }
+sapphire-framework-bridge = { version = "0.15.0", features = ["test-util"] }
 # The harness parses and rewrites one device-record field (`introduce`'s
 # `~`-prefixed ledger copies).
 toml.workspace = true

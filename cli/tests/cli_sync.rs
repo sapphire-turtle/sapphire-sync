@@ -31,10 +31,9 @@ mod sync;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use sapphire_bridge_api::ManagedBy;
 use sapphire_framework_server::sync::testing::StubBridge;
 use sapphire_framework_server::{AppServer, StatusRow, SyncRuntime};
-use sapphire_ipc::probe;
+use sapphire_ipc::{ManagedBy, probe};
 use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::backend::protocol as proto;
 use sapphire_sync_core::framework::ipc::Endpoint;
@@ -173,6 +172,27 @@ async fn disable_unregisters_flips_the_row_and_reenables_with_the_same_id() {
     let handle = tokio::spawn(async move { server.run().await });
     wait_until_listening(&endpoint).await;
 
+    // A server serves one workspace and comes up with none: select the root,
+    // the way `workspace select` does.
+    let info = sapphire_ipc::ClientInfo {
+        kind: "test".into(),
+        version: env!("CARGO_PKG_VERSION").to_owned(),
+        api: proto::API_VERSION,
+        app_api: None,
+        pid: std::process::id(),
+    };
+    let (client, _) = sapphire_ipc::connect_or_absent(&endpoint, CTX.app_name, info)
+        .await
+        .unwrap()
+        .unwrap();
+    let _: proto::CurrentWorkspace = client
+        .call(
+            proto::WORKSPACE_SELECT,
+            proto::WorkspaceSelectParams { dir: root.clone() },
+        )
+        .await
+        .unwrap();
+
     // Nothing is synced, and the resolved current-directory workspace is not
     // either: it is the one `not synced` row.
     assert_eq!(
@@ -252,21 +272,26 @@ async fn disable_unregisters_flips_the_row_and_reenables_with_the_same_id() {
     .await;
     assert!(result.is_err(), "no workspace to resolve, so an error");
 
+    // Another workspace than the server's is refused, not silently ignored:
+    // `sync.disable` names none, so the verb checks the server's first.
+    let other = workspace_root(tmp.path(), "other");
+    let result = sync::dispatch(
+        cli::SyncCommand {
+            command: cli::SyncSubcommand::Disable,
+        },
+        Some(other),
+    )
+    .await;
+    assert!(
+        result.is_err(),
+        "a workspace the server does not serve is an error"
+    );
+
     // Re-enable the way `workspace init --sync` does — the framework's
     // `sync.enable` method over IPC. The sync id file stayed on disk, so the
     // workspace rejoins under the same identity, and the row says so.
-    let info = sapphire_ipc::ClientInfo {
-        kind: "test".into(),
-        version: env!("CARGO_PKG_VERSION").to_owned(),
-        api: proto::API_VERSION,
-        pid: std::process::id(),
-    };
-    let (client, _) = sapphire_ipc::connect_or_absent(&endpoint, CTX.app_name, info)
-        .await
-        .unwrap()
-        .unwrap();
     let enabled: proto::SyncEnableResult = client
-        .call(proto::SYNC_ENABLE, proto::WsParams { ws: root.clone() })
+        .call(proto::SYNC_ENABLE, serde_json::json!({}))
         .await
         .unwrap();
     assert_eq!(

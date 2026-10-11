@@ -20,15 +20,16 @@
 //! The IPC endpoint, the stop channel and the signals are `run()`'s business
 //! in both paths; the app installs nothing there.
 //!
-//! `BridgeClient` comes from the bridge-api crate: the facade re-exports the
-//! bridge *daemon* crate under `framework::bridge`, not `-bridge-api`, so the
-//! client is only reachable as a direct dependency (same git source, same
-//! branch).
+//! `BridgeClient` comes from the bridge-client crate: the facade re-exports the
+//! bridge *daemon* crate under `framework::bridge`, not `-bridge-client`, so the
+//! client is only reachable as a direct dependency (same release).
+//! `ManagedBy` is the transport's, which `SyncRuntime` takes.
 
 use std::sync::Arc;
 
-use sapphire_bridge_api::{BridgeClient, ManagedBy};
+use sapphire_bridge_client::BridgeClient;
 use sapphire_sync_core::CTX;
+use sapphire_sync_core::framework::ipc::ManagedBy;
 use sapphire_sync_core::framework::server::{AppServer, SyncRuntime};
 
 use crate::sync;
@@ -51,7 +52,7 @@ pub fn build_oneshot() -> AppServer {
 /// The app's own status rows are mounted with [`AppServer::status_rows`] —
 /// built from the same runtime, so a report reads the live sync state.
 pub async fn build_serve() -> anyhow::Result<AppServer> {
-    // Connect-only: an absent bridge is the bridge-api's `Error::NotRunning`
+    // Connect-only: an absent bridge is the bridge-client's `Error::NotRunning`
     // and the message is exactly the bridge's.
     let bridge = Arc::new(BridgeClient::connect(CTX.app_name, env!("CARGO_PKG_VERSION")).await?);
     let runtime = Arc::new(SyncRuntime::new(

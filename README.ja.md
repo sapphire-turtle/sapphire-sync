@@ -16,7 +16,7 @@ sapphire-sync は [sapphire-framework](https://github.com/fluo10/sapphire-framew
 $ sapphire-bridge serve &            # 常時稼働のピア（sapphire-bridge アプリ）
 $ sapphire-sync workspace init --sync ~/Documents/notes
 $ sapphire-sync serve &             # このホストの同期ノード
-$ sapphire-sync workspace list      # 全デバイスにワークスペースが映る
+$ sapphire-sync workspace show      # このホストのワークスペースと、ワークグループのもの
 ```
 
 フレームワーク自身の動詞（`workgroup create`、`device invite`、`workgroup join`）は
@@ -27,8 +27,8 @@ $ sapphire-sync workspace list      # 全デバイスにワークスペースが
 
 このリポジトリはひとつのバイナリを出します。アプリサーバー兼 CLI です。常時稼働のピアは
 `sapphire-bridge` アプリで、ホストごとに `sapphire-sync serve` をちょうどひとつ動かします。
-`SyncRuntime` は同期済みのワークスペースルートごとにひとつのレプリカを持ち、ブリッジに
-登録します。レプリケーションエンジンそのものはアプリではなくフレームワークの実装です。
+サーバーが扱うワークスペースは一度にひとつ（`workspace select` で切り替え）で、
+`SyncRuntime` はそのレプリカを持ち、ブリッジに登録します。レプリケーションエンジンそのものはアプリではなくフレームワークの実装です。
 
 ## ステータス出力
 
