@@ -14,10 +14,6 @@
 //! same modules `main.rs` pulls in: a `[[bin]]`-only package has no library
 //! target, so the integration test compiles them into its own crate (the
 //! `cli_parse.rs` pattern).
-//!
-//! The server's process cwd is the test's scratch tree for the whole body: the
-//! rows name the workspace the *server's* current directory resolves to, and
-//! this test's server is in-process.
 
 // The modules are compiled into this test crate directly (no lib target to
 // link against). `sync.rs` reaches `SyncCommand` through `crate::cli`, which
@@ -142,17 +138,13 @@ fn workspace_root(tmp: &std::path::Path, name: &str) -> PathBuf {
 /// the phases share one fixture instead of each initialising their own.
 #[tokio::test(flavor = "multi_thread")]
 #[allow(clippy::await_holding_lock)]
-async fn disable_unregisters_flips_the_row_and_reenables_with_the_same_id() {
+async fn disable_unregisters_drops_the_row_and_reenables_with_the_same_id() {
     let _lock = lock_env();
     let tmp = tempfile::tempdir().unwrap();
     let _env = Env::set(tmp.path());
     CTX.init(AppKind::Server);
 
     let root = workspace_root(tmp.path(), "notes");
-    // The server's cwd is the workspace: the row the *server* reports for the
-    // current directory is this workspace's (and this test's server is
-    // in-process). `SetCwd` restores it on drop, before the env guard goes.
-    let _cwd = SetCwd::to(&root);
 
     // The host: the real runtime over the stub bridge, mounted with the real
     // status rows from the app's `sync` module — the `build_serve` wiring.
@@ -193,18 +185,10 @@ async fn disable_unregisters_flips_the_row_and_reenables_with_the_same_id() {
         .await
         .unwrap();
 
-    // Nothing is synced, and the resolved current-directory workspace is not
-    // either: it is the one `not synced` row.
-    assert_eq!(
-        rows(),
-        vec![StatusRow {
-            name: "notes".into(),
-            value: "not synced".into(),
-        }],
-        "the resolved workspace shows as not synced before anything is enabled"
-    );
+    // Nothing is synced: no rows.
+    assert_eq!(rows(), vec![], "an unsynced workspace has no row");
 
-    // Enable: the same row flips to the synced text. The stub's ledger
+    // Enable: the workspace gets its row. The stub's ledger
     // answers `peers` with an empty list — the stub plus this host is the
     // whole workgroup, and the framework's saturating_sub(1) convention turns
     // that into 0 other devices. Assert exactly what the row renders.
@@ -219,7 +203,7 @@ async fn disable_unregisters_flips_the_row_and_reenables_with_the_same_id() {
     );
 
     // Disable through the app's own dispatch, over IPC to this server: the
-    // workspace's registration leaves the bridge, and the row flips back.
+    // workspace's registration leaves the bridge, and its row goes.
     let code = sync::dispatch(
         cli::SyncCommand {
             command: cli::SyncSubcommand::Disable,
@@ -236,11 +220,8 @@ async fn disable_unregisters_flips_the_row_and_reenables_with_the_same_id() {
     );
     assert_eq!(
         rows(),
-        vec![StatusRow {
-            name: "notes".into(),
-            value: "not synced".into(),
-        }],
-        "the row flips once the runtime no longer syncs the root"
+        vec![],
+        "the row goes once the runtime no longer syncs the root"
     );
 
     // Idempotent: disabling an unsynced workspace is still a success, and it
@@ -330,31 +311,6 @@ async fn disable_unregisters_flips_the_row_and_reenables_with_the_same_id() {
     // does before this test's guards are gone.
     handle.abort();
     drop(stub);
-    drop(_cwd);
     drop(_env);
     drop(_lock);
-}
-
-/// The test process's cwd for the guard's life, restored on drop.
-///
-/// `std::env::set_current_dir` is process-global, like the environment: the
-/// same `ENV_LOCK` that serialises the env vars serialises this, and the
-/// caller holds that lock for the whole test.
-struct SetCwd {
-    previous: PathBuf,
-}
-
-impl SetCwd {
-    /// Change into `dir`, remembering where the process was.
-    fn to(dir: &std::path::Path) -> SetCwd {
-        let previous = std::env::current_dir().unwrap();
-        std::env::set_current_dir(dir).unwrap();
-        SetCwd { previous }
-    }
-}
-
-impl Drop for SetCwd {
-    fn drop(&mut self) {
-        std::env::set_current_dir(&self.previous).unwrap();
-    }
 }

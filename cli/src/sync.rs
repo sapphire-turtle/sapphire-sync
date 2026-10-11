@@ -132,10 +132,9 @@ fn same_dir(a: &Path, b: &Path) -> bool {
 /// calling this once per report. Every workspace the runtime syncs gets one
 /// row — `synced as <id>, N peer(s)`, the workgroup's device count minus this
 /// host per the framework's convention, and `paused: <reason>` appended when
-/// replication is paused — and so does the workspace the server's current
-/// directory resolves to without being synced (`not synced`): that is the row
-/// a `sync disable` leaves behind, and the one `workspace init` without
-/// `--sync` shows. An idle runtime with nothing around it reports no rows.
+/// replication is paused. A workspace that is not synced has no row: the
+/// framework's own `workspace show` already reports the server's workspace
+/// and whether it syncs.
 pub fn status_rows(runtime: Arc<SyncRuntime>) -> Arc<dyn Fn() -> Vec<StatusRow> + Send + Sync> {
     Arc::new(move || {
         // The closure is sync (the framework calls it from a sync context),
@@ -149,47 +148,31 @@ pub fn status_rows(runtime: Arc<SyncRuntime>) -> Arc<dyn Fn() -> Vec<StatusRow> 
             // The runtime holds its roots in a map; report them in a stable
             // order.
             roots.sort();
-            let mut rows: Vec<StatusRow> = roots
+            roots
                 .iter()
-                .map(|root| {
+                .filter_map(|root| {
                     let status = handle.block_on(runtime.status(root));
-                    row_for(root, &status)
+                    status.enabled.then(|| row_for(root, &status))
                 })
-                .collect();
-            // The unsynced workspace the server's current directory resolves
-            // to, when there is one and it is not already reported: a row
-            // that says `not synced` instead of disappearing.
-            if let Ok(cwd) = std::env::current_dir()
-                && let Ok(workspace) = Workspace::find_from(&CTX, &cwd)
-                && !roots.contains(&workspace.root)
-            {
-                let status = handle.block_on(runtime.status(&workspace.root));
-                rows.push(row_for(&workspace.root, &status));
-            }
-            rows
+                .collect()
         })
     })
 }
 
-/// The row one workspace renders as.
+/// The row one synced workspace renders as.
 fn row_for(root: &Path, status: &SyncStatus) -> StatusRow {
     let name = root
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| root.display().to_string());
-    let value = if status.enabled {
-        let id = status
-            .workspace_id
-            .map(|id| id.to_string())
-            .unwrap_or_else(|| "-".into());
-        let mut value = format!("synced as {id}, {}", peers_text(status.peers));
-        if let Some(paused) = &status.paused {
-            value.push_str(&format!(", paused: {paused}"));
-        }
-        value
-    } else {
-        "not synced".to_owned()
-    };
+    let id = status
+        .workspace_id
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| "-".into());
+    let mut value = format!("synced as {id}, {}", peers_text(status.peers));
+    if let Some(paused) = &status.paused {
+        value.push_str(&format!(", paused: {paused}"));
+    }
     StatusRow { name, value }
 }
 
