@@ -1,0 +1,5 @@
+# Pin the toolchain so CI and local checkouts agree (same policy as
+# sapphire-framework, which this repository depends on).
+[toolchain]
+channel = "1.98.0"
+components = ["clippy", "rustfmt"]

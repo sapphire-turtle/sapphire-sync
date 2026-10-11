@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # The toolchain (and its clippy/rustfmt components) comes from
+      # rust-toolchain.toml. rustup installs it on first use; do that in its
+      # own step so the download does not land in the middle of another one.
+      - name: Install the pinned toolchain
+        run: cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      # The graph still contains the search stack (the framework cleanup is
+      # a follow-up), so the test step compiles fastembed/ort and needs
+      # protoc. Once the cleanup lands this step is dead weight and can go.
+      - name: Install protoc (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Install protoc (Windows)
+        if: runner.os == 'Windows'
+        run: choco install protoc -y
+
+      - name: Check formatting
+        shell: bash
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        shell: bash
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Test
+        shell: bash
+        run: cargo test --all-features --locked
+
+      # The dependency guard: the default build must not pull in the embedding
+      # stack (fastembed and the ONNX Runtime behind it), which is the heavy
+      # part of search. `sapphire-framework-retrieve` itself is expected: the
+      # framework's workspace layer depends on it in every app, and with
+      # `default-features = false` it brings only full-text search.
+      #
+      # The whole tree is listed and grepped rather than asked with
+      # `cargo tree -i fastembed`, which fails outright ("did not match any
+      # packages") when the crate is absent — the very case that should pass.
+      # Default features only, so an opt-in feature may still enable it.
+      - name: Dependency guard (no embedding stack)
+        shell: bash
+        run: |
+          out=$(cargo tree -p sapphire-sync --locked --prefix none --format '{p}' \
+            | grep -E '^(fastembed|ort|ort-sys) v' | sort -u || true)
+          if [ -n "$out" ]; then
+            echo "::error::the embedding stack leaked into the default graph:"
+            echo "$out"
+            exit 1
+          fi
