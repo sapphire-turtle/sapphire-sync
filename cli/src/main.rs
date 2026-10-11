@@ -53,10 +53,9 @@ fn main() {
 async fn run(cli: cli::Cli) -> anyhow::Result<()> {
     let version = env!("CARGO_PKG_VERSION");
     match cli.app {
-        // The app's own verbs come first. The workspace argument is the same
-        // global `--workspace-dir` the framework's verbs resolve on their side.
+        // The app's own verbs come first.
         Some(cli::AppCommand::Sync(command)) => {
-            let code = sync::dispatch(command, cli.workspace.workspace_dir).await?;
+            let code = sync::dispatch(command).await?;
             std::process::exit(code);
         }
         // An explicit `serve` is the same server as a bare invocation — and

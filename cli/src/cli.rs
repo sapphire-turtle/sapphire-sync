@@ -30,9 +30,9 @@ pub struct Cli {
     /// The app's own verbs, beside the framework's.
     #[command(subcommand)]
     pub app: Option<AppCommand>,
-    /// The global `--workspace-dir`: the explicit workspace root, overriding the
-    /// automatic upward search. The framework's verbs resolve their root the
-    /// same way on their side.
+    /// The framework's global `--workspace-dir`. Still parsed, but no verb reads
+    /// it: every one-shot verb acts on the server's current workspace
+    /// (sapphire-framework#227 tracks removing it).
     #[command(flatten)]
     pub workspace: WorkspaceArgs,
 }

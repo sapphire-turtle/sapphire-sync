@@ -7,72 +7,51 @@
 //! `sync.disable` on the workspace it serves. Status is the framework's
 //! report; the app only injects rows.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::backend::protocol as proto;
 use sapphire_sync_core::framework::ipc::{ClientInfo, Endpoint, connect_or_absent};
 use sapphire_sync_core::framework::server::{StatusRow, SyncRuntime, SyncStatus};
-use sapphire_sync_core::framework::workspace::Workspace;
 
 use crate::cli::SyncCommand;
 
 /// Run the parsed `sync` verb, returning the process exit code.
 ///
-/// Any error — a workspace that cannot be resolved, a server that answers but
-/// fails the call — propagates to `main`, which prints it in the app's own
-/// `sapphire-sync: {err}` shape and exits 1. An absent server is not an
-/// error: it is the one-line report below.
-pub async fn dispatch(command: SyncCommand, root: Option<PathBuf>) -> anyhow::Result<i32> {
+/// Any error — a server that answers but fails the call — propagates to
+/// `main`, which prints it in the app's own `sapphire-sync: {err}` shape and
+/// exits 1. An absent server is not an error: it is the one-line report below.
+pub async fn dispatch(command: SyncCommand) -> anyhow::Result<i32> {
     match command.command {
-        crate::cli::SyncSubcommand::Disable => disable(root).await,
+        crate::cli::SyncSubcommand::Disable => disable().await,
     }
 }
 
 /// `sync disable`: stop syncing the server's workspace.
 ///
 /// A server serves one workspace (the framework's `workspace.current`), and
-/// `sync.disable` names none: it stops syncing that one. The current
-/// directory plays no part — the verb acts on the server's workspace wherever
-/// it is typed. An explicit `--workspace-dir` is only a guard: it must be a
-/// workspace root itself (`Workspace::from_root`, no upward walk), and the
-/// verb refuses to run when that is not the server's workspace, so a
-/// `sync disable --workspace-dir <dir>` never stops another. Connect-only,
-/// nothing is ever started.
+/// `sync.disable` names none: it stops syncing that one. The verb takes no
+/// workspace of its own — neither the current directory nor
+/// `--workspace-dir` plays a part — so it acts on the server's workspace
+/// wherever it is typed; `workspace select` is how to point the server at
+/// another. Connect-only, nothing is ever started.
 ///
 /// An absent server is the framework's one-line report — `no {app} server is
 /// running` on stdout, exit 1, the exact line the framework's own one-shot
 /// verbs print when nothing is listening (`run_status_into`) — not an error
 /// on stderr. Absence is the verb's answer, the same `connect_or_absent`
 /// `None` every other one-shot verb reports, and a half-open socket or a
-/// shutting-down server folds into it. Every other error — an explicit
-/// directory that is not a workspace root, a server with no workspace
-/// selected, a workspace mismatch, a probe failure, a failing call —
-/// propagates to `main`, which prints it in the app's `sapphire-sync: {err}`
-/// shape and exits 1.
+/// shutting-down server folds into it. Every other error — a server with no
+/// workspace selected, a probe failure, a failing call — propagates to
+/// `main`, which prints it in the app's `sapphire-sync: {err}` shape and
+/// exits 1.
 ///
 /// Files and the sync id stay, and success is exit 0 whether or not the
 /// workspace was synced at all — the runtime's `disable` is idempotent, so a
 /// workspace that was never enabled is a no-op, not an error. Re-enabling via
 /// `workspace init --sync` rejoins the same workspace.
-async fn disable(root: Option<PathBuf>) -> anyhow::Result<i32> {
-    // `from_root` canonicalises the root, so the comparison below is between
-    // canonical paths.
-    let expected = match root {
-        Some(dir) => Some(
-            Workspace::from_root(&CTX, &dir)
-                .map_err(|e| {
-                    anyhow::Error::new(e).context(format!(
-                        "{} is not a sapphire-sync workspace root",
-                        dir.display()
-                    ))
-                })?
-                .root,
-        ),
-        None => None,
-    };
-
+async fn disable() -> anyhow::Result<i32> {
     let endpoint = Endpoint::for_app(CTX.app_name)?;
     let info = ClientInfo {
         kind: "cli".to_owned(),
@@ -98,21 +77,6 @@ async fn disable(root: Option<PathBuf>) -> anyhow::Result<i32> {
             CTX.app_name
         );
     };
-    if let Some(expected) = expected {
-        // The server may report its root through another spelling.
-        let served = current
-            .root
-            .canonicalize()
-            .unwrap_or_else(|_| current.root.clone());
-        if expected != served {
-            anyhow::bail!(
-                "{} is not the server's workspace ({}); run `{} workspace select` to switch",
-                expected.display(),
-                current.root.display(),
-                CTX.app_name
-            );
-        }
-    }
     let _: proto::Ack = client
         .call(proto::SYNC_DISABLE, serde_json::json!({}))
         .await?;
