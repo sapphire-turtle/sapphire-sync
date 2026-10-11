@@ -10,7 +10,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::Context as _;
 use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::backend::protocol as proto;
 use sapphire_sync_core::framework::ipc::{ClientInfo, Endpoint, connect_or_absent};
@@ -31,46 +30,56 @@ pub async fn dispatch(command: SyncCommand, root: Option<PathBuf>) -> anyhow::Re
     }
 }
 
-/// `sync disable`: stop syncing the workspace this invocation resolves to.
+/// `sync disable`: stop syncing the server's workspace.
 ///
-/// The root is the explicit `--workspace-dir` or the current directory, walked
-/// upward for the app's marker (`Workspace::find_from` — the same resolution
-/// the server's `workspace.init` does server-side). The verb connects to the
-/// running server and calls the framework's `sync.disable`: connect-only,
-/// nothing is ever started.
+/// A server serves one workspace (the framework's `workspace.current`), and
+/// `sync.disable` names none: it stops syncing that one. The verb still
+/// resolves the explicit `--workspace-dir` or the current directory, walked
+/// upward for the app's marker (`Workspace::find_from`), and refuses to run
+/// when that is another workspace than the server's — the framework's own
+/// `IpcBackend::check_cwd` rule, so a `sync disable` typed inside one
+/// workspace never stops another. Outside any workspace, the verb acts on
+/// the server's. Connect-only, nothing is ever started.
 ///
 /// An absent server is the framework's one-line report — `no {app} server is
 /// running` on stdout, exit 1, the exact line the framework's own one-shot
 /// verbs print when nothing is listening (`run_status_into`) — not an error
 /// on stderr. Absence is the verb's answer, the same `connect_or_absent`
 /// `None` every other one-shot verb reports, and a half-open socket or a
-/// shutting-down server folds into it. Every other error — a workspace that
-/// cannot be resolved, a probe failure, a failing call — propagates to
-/// `main`, which prints it in the app's `sapphire-sync: {err}` shape and
-/// exits 1.
+/// shutting-down server folds into it. Every other error — a server with no
+/// workspace selected, a workspace mismatch, a probe failure, a failing
+/// call — propagates to `main`, which prints it in the app's
+/// `sapphire-sync: {err}` shape and exits 1.
 ///
-/// Files and the sync id stay, and success is exit 0 whether or not the root
-/// was synced at all — the runtime's `disable` is idempotent, so a workspace
-/// that was never enabled is a no-op, not an error. Re-enabling via
+/// Files and the sync id stay, and success is exit 0 whether or not the
+/// workspace was synced at all — the runtime's `disable` is idempotent, so a
+/// workspace that was never enabled is a no-op, not an error. Re-enabling via
 /// `workspace init --sync` rejoins the same workspace.
 async fn disable(root: Option<PathBuf>) -> anyhow::Result<i32> {
+    let explicit = root.is_some();
     let start = match root {
         Some(dir) => dir,
         None => std::env::current_dir()?,
     };
-    let workspace = Workspace::find_from(&CTX, &start).with_context(|| {
-        format!(
-            "{} is not inside a sapphire-sync workspace",
-            start.display()
-        )
-    })?;
-    let root = workspace.root;
+    let resolved = match Workspace::find_from(&CTX, &start) {
+        Ok(workspace) => Some(workspace.root),
+        // An explicit `--workspace-dir` must name a workspace; a cwd outside
+        // every workspace just defers to the server's.
+        Err(e) if explicit => {
+            return Err(anyhow::Error::new(e).context(format!(
+                "{} is not inside a sapphire-sync workspace",
+                start.display()
+            )));
+        }
+        Err(_) => None,
+    };
 
     let endpoint = Endpoint::for_app(CTX.app_name)?;
     let info = ClientInfo {
         kind: "cli".to_owned(),
         version: env!("CARGO_PKG_VERSION").to_owned(),
         api: proto::API_VERSION,
+        app_api: None,
         pid: std::process::id(),
     };
     // Connect-only, and the API gate rides the handshake: a live server of
@@ -80,11 +89,40 @@ async fn disable(root: Option<PathBuf>) -> anyhow::Result<i32> {
         println!("no {} server is running", CTX.app_name);
         return Ok(1);
     };
-    let _: proto::Ack = client
-        .call(proto::SYNC_DISABLE, proto::WsParams { ws: root.clone() })
+    let current: proto::WorkspaceCurrentResult = client
+        .call(proto::WORKSPACE_CURRENT, serde_json::json!({}))
         .await?;
-    println!("sync disabled for {}", root.display());
+    let Some(current) = current.workspace else {
+        anyhow::bail!(
+            "the {} server has no workspace selected; run `{} workspace select <dir>`",
+            CTX.app_name,
+            CTX.app_name
+        );
+    };
+    if let Some(resolved) = resolved
+        && !same_dir(&resolved, &current.root)
+    {
+        anyhow::bail!(
+            "{} is not the server's workspace ({}); run `{} workspace select` to switch",
+            resolved.display(),
+            current.root.display(),
+            CTX.app_name
+        );
+    }
+    let _: proto::Ack = client
+        .call(proto::SYNC_DISABLE, serde_json::json!({}))
+        .await?;
+    println!("sync disabled for {}", current.root.display());
     Ok(0)
+}
+
+/// Whether two roots are the same directory, comparing canonical paths when
+/// both resolve (the server may report a root through another spelling).
+fn same_dir(a: &Path, b: &Path) -> bool {
+    match (a.canonicalize(), b.canonicalize()) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => a == b,
+    }
 }
 
 /// The status rows the app's server reports, for the framework's
@@ -94,10 +132,9 @@ async fn disable(root: Option<PathBuf>) -> anyhow::Result<i32> {
 /// calling this once per report. Every workspace the runtime syncs gets one
 /// row — `synced as <id>, N peer(s)`, the workgroup's device count minus this
 /// host per the framework's convention, and `paused: <reason>` appended when
-/// replication is paused — and so does the workspace the server's current
-/// directory resolves to without being synced (`not synced`): that is the row
-/// a `sync disable` leaves behind, and the one `workspace init` without
-/// `--sync` shows. An idle runtime with nothing around it reports no rows.
+/// replication is paused. A workspace that is not synced has no row: the
+/// framework's own `workspace show` already reports the server's workspace
+/// and whether it syncs.
 pub fn status_rows(runtime: Arc<SyncRuntime>) -> Arc<dyn Fn() -> Vec<StatusRow> + Send + Sync> {
     Arc::new(move || {
         // The closure is sync (the framework calls it from a sync context),
@@ -111,47 +148,31 @@ pub fn status_rows(runtime: Arc<SyncRuntime>) -> Arc<dyn Fn() -> Vec<StatusRow> 
             // The runtime holds its roots in a map; report them in a stable
             // order.
             roots.sort();
-            let mut rows: Vec<StatusRow> = roots
+            roots
                 .iter()
-                .map(|root| {
+                .filter_map(|root| {
                     let status = handle.block_on(runtime.status(root));
-                    row_for(root, &status)
+                    status.enabled.then(|| row_for(root, &status))
                 })
-                .collect();
-            // The unsynced workspace the server's current directory resolves
-            // to, when there is one and it is not already reported: a row
-            // that says `not synced` instead of disappearing.
-            if let Ok(cwd) = std::env::current_dir()
-                && let Ok(workspace) = Workspace::find_from(&CTX, &cwd)
-                && !roots.contains(&workspace.root)
-            {
-                let status = handle.block_on(runtime.status(&workspace.root));
-                rows.push(row_for(&workspace.root, &status));
-            }
-            rows
+                .collect()
         })
     })
 }
 
-/// The row one workspace renders as.
+/// The row one synced workspace renders as.
 fn row_for(root: &Path, status: &SyncStatus) -> StatusRow {
     let name = root
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| root.display().to_string());
-    let value = if status.enabled {
-        let id = status
-            .workspace_id
-            .map(|id| id.to_string())
-            .unwrap_or_else(|| "-".into());
-        let mut value = format!("synced as {id}, {}", peers_text(status.peers));
-        if let Some(paused) = &status.paused {
-            value.push_str(&format!(", paused: {paused}"));
-        }
-        value
-    } else {
-        "not synced".to_owned()
-    };
+    let id = status
+        .workspace_id
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| "-".into());
+    let mut value = format!("synced as {id}, {}", peers_text(status.peers));
+    if let Some(paused) = &status.paused {
+        value.push_str(&format!(", paused: {paused}"));
+    }
     StatusRow { name, value }
 }
 

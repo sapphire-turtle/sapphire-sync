@@ -39,13 +39,16 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use sapphire_bridge_api::{BridgeClient, GrainId, ManagedBy};
+use sapphire_bridge_api::GrainId;
+use sapphire_bridge_client::BridgeClient;
 use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::backend::protocol as proto;
 use sapphire_sync_core::framework::bridge::{
     Bridge, BridgeDir, LoopbackNetwork, NetConfig, Workgroup,
 };
-use sapphire_sync_core::framework::ipc::{Client, ClientInfo, Endpoint, connect_or_absent, probe};
+use sapphire_sync_core::framework::ipc::{
+    Client, ClientInfo, Endpoint, ManagedBy, connect_or_absent, probe,
+};
 use sapphire_sync_core::framework::server::{AppServer, SyncRuntime};
 use sapphire_sync_core::framework::workspace::AppContext;
 use toml::Table;
@@ -91,7 +94,7 @@ pub struct Host {
     tmp: Option<tempfile::TempDir>,
     /// This host's node id on the loopback network.
     node_id: String,
-    /// The workspace root. Named `ws` because every RPC that names a workspace names it.
+    /// The workspace root: the one this host's server serves.
     pub ws: PathBuf,
     /// The bridge directory and the workgroup this host belongs to.
     pub bridge_dir: BridgeDir,
@@ -166,17 +169,15 @@ pub async fn start_host(net: &LoopbackNetwork, node_id: &str, device_name: &str)
     });
     wait_until_listening(&control, "the bridge").await;
 
-    // The app server's connection to its own bridge, built explicitly rather than
-    // through `BridgeClient::connect`, which would look the bridge up in the process
-    // environment — one value, two hosts.
-    let (control_client, _) = connect_or_absent(&control, "bridge", client_info("test"))
-        .await
-        .unwrap()
-        .expect("the bridge is listening");
-    let bridge_client = Arc::new(BridgeClient::from_client(
-        Arc::new(control_client),
-        runtime_dir.clone(),
-    ));
+    // The app server's connection to its own bridge, at this host's endpoint rather
+    // than through `BridgeClient::connect`, which would look the bridge up in the
+    // process environment — one value, two hosts.
+    let bridge_client = Arc::new(
+        BridgeClient::connect_at(&control, "test", VERSION)
+            .await
+            .unwrap()
+            .expect("the bridge is listening"),
+    );
 
     // The app server, with sync wired the way `crate::server::build_serve` wires it.
     let endpoint = Endpoint::in_dir(ctx.app_name, runtime_dir.clone());
@@ -186,8 +187,11 @@ pub async fn start_host(net: &LoopbackNetwork, node_id: &str, device_name: &str)
         std::env::current_exe().unwrap_or_else(|_| PathBuf::from("sapphire-sync")),
         ManagedBy::Service,
     ));
+    // Both hosts share the process's `CTX`, so each keeps its selected workspace in a
+    // file of its own rather than the shared config directory.
     let server = AppServer::new(ctx, VERSION)
         .endpoint(endpoint.clone())
+        .selection_file(tmp.path().join("workspace.toml"))
         .sync(Arc::clone(&runtime));
     let server_task = tokio::spawn(async move { server.run().await });
     wait_until_listening(&endpoint, "the app server").await;
@@ -196,6 +200,14 @@ pub async fn start_host(net: &LoopbackNetwork, node_id: &str, device_name: &str)
         .await
         .unwrap()
         .expect("the app server is listening");
+    // A server serves one workspace, and comes up with none: select this host's.
+    let _: proto::CurrentWorkspace = client
+        .call(
+            proto::WORKSPACE_SELECT,
+            proto::WorkspaceSelectParams { dir: root.clone() },
+        )
+        .await
+        .expect("selecting the host's workspace");
 
     let workgroup_id = founded.id;
 
@@ -301,13 +313,14 @@ fn copy_device(from: &Host, to: &Host) {
     std::fs::write(&destination, toml::to_string_pretty(&record).unwrap()).unwrap();
 }
 
-/// What a client says it is. The API version must match the server's, or the
-/// handshake fails; the crate version is only reported.
+/// What a client of the app server says it is. The API version must match the
+/// server's, or the handshake fails; the crate version is only reported.
 fn client_info(kind: &str) -> ClientInfo {
     ClientInfo {
         kind: kind.to_owned(),
         version: VERSION.to_owned(),
         api: proto::API_VERSION,
+        app_api: None,
         pid: std::process::id(),
     }
 }
@@ -401,12 +414,7 @@ pub async fn settle(hosts: &[&Host]) {
 pub async fn enable_sync(host: &Host) {
     let _: proto::SyncEnableResult = host
         .client
-        .call(
-            proto::SYNC_ENABLE,
-            proto::WsParams {
-                ws: host.ws.clone(),
-            },
-        )
+        .call(proto::SYNC_ENABLE, serde_json::json!({}))
         .await
         .unwrap();
 }

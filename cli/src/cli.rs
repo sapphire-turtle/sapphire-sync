@@ -58,7 +58,7 @@ pub struct SyncCommand {
 /// The `sync` verbs.
 #[derive(Debug, Subcommand)]
 pub enum SyncSubcommand {
-    /// Stop syncing the workspace this invocation resolves to.
+    /// Stop syncing the server's workspace (refused from inside another one).
     ///
     /// Files and the sync-id stay; re-enabling via `workspace init --sync`
     /// rejoins the same workspace.
