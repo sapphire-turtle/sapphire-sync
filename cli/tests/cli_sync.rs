@@ -225,12 +225,13 @@ async fn disable_unregisters_drops_the_row_and_reenables_with_the_same_id() {
     );
 
     // Idempotent: disabling an unsynced workspace is still a success, and it
-    // does not unregister anything again.
+    // does not unregister anything again. No `--workspace-dir` this time: the
+    // verb acts on the server's workspace, whatever the current directory.
     let code = sync::dispatch(
         cli::SyncCommand {
             command: cli::SyncSubcommand::Disable,
         },
-        Some(root.clone()),
+        None,
     )
     .await
     .unwrap();
@@ -241,8 +242,8 @@ async fn disable_unregisters_drops_the_row_and_reenables_with_the_same_id() {
         "nothing left to unregister"
     );
 
-    // A directory no workspace can be resolved from is the caller's mistake:
-    // the error propagates to `main` and exits 1.
+    // An explicit directory that is not a workspace root is the caller's
+    // mistake: the error propagates to `main` and exits 1.
     let elsewhere = tempfile::tempdir().unwrap();
     let result = sync::dispatch(
         cli::SyncCommand {
@@ -251,7 +252,23 @@ async fn disable_unregisters_drops_the_row_and_reenables_with_the_same_id() {
         Some(elsewhere.path().to_owned()),
     )
     .await;
-    assert!(result.is_err(), "no workspace to resolve, so an error");
+    assert!(result.is_err(), "not a workspace root, so an error");
+
+    // Nor is anything walked upward from it: a directory inside the server's
+    // workspace is not its root.
+    let inside = root.join("inside");
+    std::fs::create_dir_all(&inside).unwrap();
+    let result = sync::dispatch(
+        cli::SyncCommand {
+            command: cli::SyncSubcommand::Disable,
+        },
+        Some(inside),
+    )
+    .await;
+    assert!(
+        result.is_err(),
+        "a subdirectory is not resolved to its workspace"
+    );
 
     // Another workspace than the server's is refused, not silently ignored:
     // `sync.disable` names none, so the verb checks the server's first.

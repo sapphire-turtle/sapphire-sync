@@ -2,10 +2,10 @@
 //! server reports.
 //!
 //! Enabling, mapping and listing are the framework's `workspace` verbs; only
-//! *disabling* is app-owned, and even it is thin: resolve the workspace the
-//! way the framework does, connect to the running server (connect-only,
-//! nothing is ever started), and call the framework's `sync.disable`. Status
-//! is the framework's report; the app only injects rows.
+//! *disabling* is app-owned, and even it is thin: connect to the running
+//! server (connect-only, nothing is ever started) and call the framework's
+//! `sync.disable` on the workspace it serves. Status is the framework's
+//! report; the app only injects rows.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -33,45 +33,44 @@ pub async fn dispatch(command: SyncCommand, root: Option<PathBuf>) -> anyhow::Re
 /// `sync disable`: stop syncing the server's workspace.
 ///
 /// A server serves one workspace (the framework's `workspace.current`), and
-/// `sync.disable` names none: it stops syncing that one. The verb still
-/// resolves the explicit `--workspace-dir` or the current directory, walked
-/// upward for the app's marker (`Workspace::find_from`), and refuses to run
-/// when that is another workspace than the server's — the framework's own
-/// `IpcBackend::check_cwd` rule, so a `sync disable` typed inside one
-/// workspace never stops another. Outside any workspace, the verb acts on
-/// the server's. Connect-only, nothing is ever started.
+/// `sync.disable` names none: it stops syncing that one. The current
+/// directory plays no part — the verb acts on the server's workspace wherever
+/// it is typed. An explicit `--workspace-dir` is only a guard: it must be a
+/// workspace root itself (`Workspace::from_root`, no upward walk), and the
+/// verb refuses to run when that is not the server's workspace, so a
+/// `sync disable --workspace-dir <dir>` never stops another. Connect-only,
+/// nothing is ever started.
 ///
 /// An absent server is the framework's one-line report — `no {app} server is
 /// running` on stdout, exit 1, the exact line the framework's own one-shot
 /// verbs print when nothing is listening (`run_status_into`) — not an error
 /// on stderr. Absence is the verb's answer, the same `connect_or_absent`
 /// `None` every other one-shot verb reports, and a half-open socket or a
-/// shutting-down server folds into it. Every other error — a server with no
-/// workspace selected, a workspace mismatch, a probe failure, a failing
-/// call — propagates to `main`, which prints it in the app's
-/// `sapphire-sync: {err}` shape and exits 1.
+/// shutting-down server folds into it. Every other error — an explicit
+/// directory that is not a workspace root, a server with no workspace
+/// selected, a workspace mismatch, a probe failure, a failing call —
+/// propagates to `main`, which prints it in the app's `sapphire-sync: {err}`
+/// shape and exits 1.
 ///
 /// Files and the sync id stay, and success is exit 0 whether or not the
 /// workspace was synced at all — the runtime's `disable` is idempotent, so a
 /// workspace that was never enabled is a no-op, not an error. Re-enabling via
 /// `workspace init --sync` rejoins the same workspace.
 async fn disable(root: Option<PathBuf>) -> anyhow::Result<i32> {
-    let explicit = root.is_some();
-    let start = match root {
-        Some(dir) => dir,
-        None => std::env::current_dir()?,
-    };
-    let resolved = match Workspace::find_from(&CTX, &start) {
-        Ok(workspace) => Some(workspace.root),
-        // An explicit `--workspace-dir` must name a workspace; a cwd outside
-        // every workspace just defers to the server's.
-        Err(e) if explicit => {
-            return Err(anyhow::Error::new(e).context(format!(
-                "{} is not inside a sapphire-sync workspace",
-                start.display()
-            )));
-        }
-        Err(_) => None,
+    // `from_root` canonicalises the root, so the comparison below is between
+    // canonical paths.
+    let expected = match root {
+        Some(dir) => Some(
+            Workspace::from_root(&CTX, &dir)
+                .map_err(|e| {
+                    anyhow::Error::new(e).context(format!(
+                        "{} is not a sapphire-sync workspace root",
+                        dir.display()
+                    ))
+                })?
+                .root,
+        ),
+        None => None,
     };
 
     let endpoint = Endpoint::for_app(CTX.app_name)?;
@@ -99,30 +98,26 @@ async fn disable(root: Option<PathBuf>) -> anyhow::Result<i32> {
             CTX.app_name
         );
     };
-    if let Some(resolved) = resolved
-        && !same_dir(&resolved, &current.root)
-    {
-        anyhow::bail!(
-            "{} is not the server's workspace ({}); run `{} workspace select` to switch",
-            resolved.display(),
-            current.root.display(),
-            CTX.app_name
-        );
+    if let Some(expected) = expected {
+        // The server may report its root through another spelling.
+        let served = current
+            .root
+            .canonicalize()
+            .unwrap_or_else(|_| current.root.clone());
+        if expected != served {
+            anyhow::bail!(
+                "{} is not the server's workspace ({}); run `{} workspace select` to switch",
+                expected.display(),
+                current.root.display(),
+                CTX.app_name
+            );
+        }
     }
     let _: proto::Ack = client
         .call(proto::SYNC_DISABLE, serde_json::json!({}))
         .await?;
     println!("sync disabled for {}", current.root.display());
     Ok(0)
-}
-
-/// Whether two roots are the same directory, comparing canonical paths when
-/// both resolve (the server may report a root through another spelling).
-fn same_dir(a: &Path, b: &Path) -> bool {
-    match (a.canonicalize(), b.canonicalize()) {
-        (Ok(a), Ok(b)) => a == b,
-        _ => a == b,
-    }
 }
 
 /// The status rows the app's server reports, for the framework's
