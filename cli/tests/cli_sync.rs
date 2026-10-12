@@ -204,12 +204,9 @@ async fn disable_unregisters_drops_the_row_and_reenables_with_the_same_id() {
 
     // Disable through the app's own dispatch, over IPC to this server: the
     // workspace's registration leaves the bridge, and its row goes.
-    let code = sync::dispatch(
-        cli::SyncCommand {
-            command: cli::SyncSubcommand::Disable,
-        },
-        Some(root.clone()),
-    )
+    let code = sync::dispatch(cli::SyncCommand {
+        command: cli::SyncSubcommand::Disable,
+    })
     .await
     .unwrap();
     assert_eq!(code, 0, "a successful disable exits 0");
@@ -226,12 +223,9 @@ async fn disable_unregisters_drops_the_row_and_reenables_with_the_same_id() {
 
     // Idempotent: disabling an unsynced workspace is still a success, and it
     // does not unregister anything again.
-    let code = sync::dispatch(
-        cli::SyncCommand {
-            command: cli::SyncSubcommand::Disable,
-        },
-        Some(root.clone()),
-    )
+    let code = sync::dispatch(cli::SyncCommand {
+        command: cli::SyncSubcommand::Disable,
+    })
     .await
     .unwrap();
     assert_eq!(code, 0, "an idempotent disable exits 0 too");
@@ -239,33 +233,6 @@ async fn disable_unregisters_drops_the_row_and_reenables_with_the_same_id() {
         stub.seen.lock().expect("stub").unregistrations,
         vec![id],
         "nothing left to unregister"
-    );
-
-    // A directory no workspace can be resolved from is the caller's mistake:
-    // the error propagates to `main` and exits 1.
-    let elsewhere = tempfile::tempdir().unwrap();
-    let result = sync::dispatch(
-        cli::SyncCommand {
-            command: cli::SyncSubcommand::Disable,
-        },
-        Some(elsewhere.path().to_owned()),
-    )
-    .await;
-    assert!(result.is_err(), "no workspace to resolve, so an error");
-
-    // Another workspace than the server's is refused, not silently ignored:
-    // `sync.disable` names none, so the verb checks the server's first.
-    let other = workspace_root(tmp.path(), "other");
-    let result = sync::dispatch(
-        cli::SyncCommand {
-            command: cli::SyncSubcommand::Disable,
-        },
-        Some(other),
-    )
-    .await;
-    assert!(
-        result.is_err(),
-        "a workspace the server does not serve is an error"
     );
 
     // Re-enable the way `workspace init --sync` does — the framework's

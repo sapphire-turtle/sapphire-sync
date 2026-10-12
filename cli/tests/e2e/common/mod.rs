@@ -133,8 +133,8 @@ pub async fn start_host(net: &LoopbackNetwork, node_id: &str, device_name: &str)
     // device). Routing is keyed by the workspace's sync-id, not the workgroup id.
     let founded = Workgroup::create(&bridge_dir, "sync-e2e", device_name, node_id).unwrap();
 
-    // The workspace root with its marker directory: the same shape the CLI's
-    // `Workspace::find_from` resolution walks to.
+    // The workspace root with its marker directory: the shape
+    // `Workspace::from_root` accepts.
     let root = tmp.path().join("notes");
     std::fs::create_dir_all(root.join(format!(".{}", ctx.app_name))).unwrap();
     let root = root.canonicalize().unwrap();

@@ -150,24 +150,21 @@ fn status_without_a_server_prints_the_frameworks_line() {
     );
 }
 
-/// `sync disable` with no server, from a directory a workspace resolves from:
-/// the framework's absence line on stdout, exit 1 — the same answer every
-/// one-shot verb gives, because dispatch connects and never starts anything.
+/// `sync disable` with no server: the framework's absence line on stdout,
+/// exit 1 — the same answer every one-shot verb gives, because dispatch
+/// connects and never starts anything.
 ///
-/// The subprocess runs inside a workspace (its cwd is the test's scratch
-/// tree): without one the resolution fails before the connect does, and the
-/// line the test would pin is the app's resolution error instead of the
-/// framework's.
+/// The subprocess runs outside any workspace: the verb never looks at the
+/// current directory, so there is nothing to resolve before the connect.
 #[test]
 fn sync_disable_without_a_server_prints_the_frameworks_line() {
     let _lock = lock_env();
     let tmp = tempfile::tempdir().unwrap();
     let _env = Env::set(tmp.path());
-    std::fs::create_dir_all(tmp.path().join("notes").join(format!(".{}", CTX.app_name))).unwrap();
 
     let output = Command::new(env!("CARGO_BIN_EXE_sapphire-sync"))
         .args(["sync", "disable"])
-        .current_dir(tmp.path().join("notes"))
+        .current_dir(tmp.path())
         .output()
         .expect("the sapphire-sync binary must run");
 
