@@ -1,0 +1,11 @@
+[package]
+name = "sapphire-sync-api"
+# The major is the sapphire-sync server's API version (`API_VERSION`); it moves only
+# when the app's own methods or their types break, not with the app's version.
+version = "1.0.0"
+edition.workspace = true
+description = "The API version and methods of the sapphire-sync server, apart from the framework's"
+license.workspace = true
+repository.workspace = true
+keywords = ["sync", "ipc", "protocol", "local-first"]
+categories = ["network-programming"]

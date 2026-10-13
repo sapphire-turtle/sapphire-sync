@@ -158,6 +158,7 @@ async fn disable_unregisters_drops_the_row_and_reenables_with_the_same_id() {
     let rows = sync::status_rows(Arc::clone(&runtime));
     let rows = Arc::clone(&rows) as Arc<dyn Fn() -> Vec<StatusRow> + Send + Sync>;
     let server = AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
+        .app_api(sapphire_sync_api::API_VERSION)
         .sync(Arc::clone(&runtime))
         .status_rows(Arc::clone(&rows));
     let endpoint = Endpoint::for_app(CTX.app_name).unwrap();

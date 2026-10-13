@@ -1,6 +1,6 @@
 [package]
 name = "sapphire-sync-desktop"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 description = "Desktop GUI for sapphire-sync"
 license.workspace = true

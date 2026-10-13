@@ -50,7 +50,9 @@ pub fn build_oneshot() -> AppServer {
 /// Sync is mounted with [`AppServer::sync`]; the runtime is built here because
 /// it needs the bridge connection, which is the caller's to open and to close.
 /// The app's own status rows are mounted with [`AppServer::status_rows`] —
-/// built from the same runtime, so a report reads the live sync state.
+/// built from the same runtime, so a report reads the live sync state. The
+/// server reports the app's API version (`sapphire-sync-api`) in the
+/// handshake, so a client that names another is refused.
 pub async fn build_serve() -> anyhow::Result<AppServer> {
     // Connect-only: an absent bridge is the bridge-client's `Error::NotRunning`
     // and the message is exactly the bridge's.
@@ -62,6 +64,7 @@ pub async fn build_serve() -> anyhow::Result<AppServer> {
         ManagedBy::Service,
     ));
     Ok(AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
+        .app_api(sapphire_sync_api::API_VERSION)
         .sync(Arc::clone(&runtime))
         .status_rows(sync::status_rows(runtime)))
 }

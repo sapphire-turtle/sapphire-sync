@@ -190,6 +190,7 @@ pub async fn start_host(net: &LoopbackNetwork, node_id: &str, device_name: &str)
     // Both hosts share the process's `CTX`, so each keeps its selected workspace in a
     // file of its own rather than the shared config directory.
     let server = AppServer::new(ctx, VERSION)
+        .app_api(sapphire_sync_api::API_VERSION)
         .endpoint(endpoint.clone())
         .selection_file(tmp.path().join("workspace.toml"))
         .sync(Arc::clone(&runtime));

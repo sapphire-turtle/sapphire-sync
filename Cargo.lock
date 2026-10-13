@@ -4021,7 +4021,7 @@ dependencies = [
 
 [[package]]
 name = "sapphire-sync"
-version = "0.1.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -4030,6 +4030,7 @@ dependencies = [
  "sapphire-framework-bridge-client",
  "sapphire-framework-ipc",
  "sapphire-framework-server",
+ "sapphire-sync-api",
  "sapphire-sync-core",
  "serde_json",
  "tempfile",
@@ -4039,8 +4040,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sapphire-sync-api"
+version = "1.0.0"
+
+[[package]]
 name = "sapphire-sync-core"
-version = "0.1.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4055,7 +4060,7 @@ dependencies = [
 
 [[package]]
 name = "sapphire-sync-desktop"
-version = "0.1.0"
+version = "0.13.0"
 dependencies = [
  "eframe",
  "sapphire-framework",
@@ -5960,9 +5965,9 @@ dependencies = [
 
 [[package]]
 name = "yoke-derive"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33811428bee40dbceb6d545e95754741d17a6aef9a4849f0fd62e2ba4f412a78"
+checksum = "ec8ebde2db3681e8c9980cc27822030e68752690ddfa9473e739aeb4dbde6d71"
 dependencies = [
  "proc-macro2",
  "quote",
