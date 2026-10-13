@@ -57,12 +57,12 @@ async fn disable() -> anyhow::Result<i32> {
         kind: "cli".to_owned(),
         version: env!("CARGO_PKG_VERSION").to_owned(),
         api: proto::API_VERSION,
-        app_api: None,
+        app_api: Some(sapphire_sync_api::API_VERSION),
         pid: std::process::id(),
     };
-    // Connect-only, and the API gate rides the handshake: a live server of
-    // another API version is `ApiVersionMismatch`, which propagates like any
-    // other error. `None` is nothing listening — the report, exit 1.
+    // Connect-only, and the API gates ride the handshake: a live server of
+    // another framework or app API version is `ApiVersionMismatch` or
+    // `AppApiVersionMismatch`, which propagates like any other error. `None` is nothing listening — the report, exit 1.
     let Some((client, _)) = connect_or_absent(&endpoint, CTX.app_name, info).await? else {
         println!("no {} server is running", CTX.app_name);
         return Ok(1);

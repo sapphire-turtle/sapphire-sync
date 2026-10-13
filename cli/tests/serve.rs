@@ -197,7 +197,9 @@ async fn status_against_a_running_server_prints_running_true() {
         std::env::current_exe().unwrap(),
         sapphire_ipc::ManagedBy::Service,
     ));
-    let server = AppServer::new(&CTX, env!("CARGO_PKG_VERSION")).sync(runtime);
+    let server = AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
+        .app_api(sapphire_sync_api::API_VERSION)
+        .sync(runtime);
     let endpoint = Endpoint::for_app(CTX.app_name).unwrap();
     let handle = tokio::spawn(async move { server.run().await });
     wait_until_listening(&endpoint).await;

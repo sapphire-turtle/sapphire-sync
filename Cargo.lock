@@ -4030,6 +4030,7 @@ dependencies = [
  "sapphire-framework-bridge-client",
  "sapphire-framework-ipc",
  "sapphire-framework-server",
+ "sapphire-sync-api",
  "sapphire-sync-core",
  "serde_json",
  "tempfile",
@@ -4037,6 +4038,10 @@ dependencies = [
  "toml",
  "tracing-subscriber",
 ]
+
+[[package]]
+name = "sapphire-sync-api"
+version = "1.0.0"
 
 [[package]]
 name = "sapphire-sync-core"
