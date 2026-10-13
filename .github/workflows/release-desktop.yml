@@ -1,0 +1,84 @@
+name: Release sapphire-sync-desktop binaries
+
+# Builds the cross-platform sapphire-sync-desktop binaries and uploads them as
+# assets onto an existing GitHub release.
+#
+# Called from release-plz.yml right after the `desktop-v{version}` tag and
+# release are created, plus workflow_dispatch for retroactive uploads and
+# manual recovery. The desktop crate is `publish = false`, so this is its only
+# delivery path.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+        description: 'Existing release tag to attach binaries to (e.g. desktop-v0.13.0).'
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        type: string
+        description: 'Existing release tag to attach binaries to (e.g. desktop-v0.13.0).'
+
+jobs:
+  build:
+    # A failure on one platform must not keep the others from being uploaded.
+    continue-on-error: ${{ matrix.continue-on-error }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            binary: sapphire-sync-desktop
+            asset_name: sapphire-sync-desktop-linux-x86_64
+            continue-on-error: false
+          - os: ubuntu-24.04-arm
+            binary: sapphire-sync-desktop
+            asset_name: sapphire-sync-desktop-linux-aarch64
+            continue-on-error: false
+          - os: macos-latest
+            binary: sapphire-sync-desktop
+            asset_name: sapphire-sync-desktop-macos-aarch64
+            continue-on-error: true
+          - os: windows-latest
+            binary: sapphire-sync-desktop.exe
+            asset_name: sapphire-sync-desktop-windows-x86_64.exe
+            continue-on-error: true
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      # Toolchain comes from rust-toolchain.toml; rustup installs it on first use.
+      - name: Install the pinned toolchain
+        run: cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      # grain-id needs protoc (prost-build); eframe's windowing needs the
+      # Wayland and xkbcommon headers on Linux.
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler libwayland-dev libxkbcommon-dev
+      - name: Install protoc (macOS)
+        if: runner.os == 'macOS'
+        run: brew install protobuf
+      - name: Install protoc (Windows)
+        if: runner.os == 'Windows'
+        run: choco install protoc -y
+
+      - run: cargo build --release --locked --package sapphire-sync-desktop
+
+      - name: Rename binary
+        shell: bash
+        run: cp target/release/${{ matrix.binary }} ${{ matrix.asset_name }}
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: ${{ matrix.asset_name }}

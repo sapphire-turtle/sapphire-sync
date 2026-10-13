@@ -1,0 +1,50 @@
+[workspace]
+# The app's crates (`sapphire-sync`, `-core`, `-desktop`) move together in
+# version_group "app", on `workspace.package.version`. Only the CLI makes the
+# `v{version}` tag and GitHub release; the desktop app has its own because it is
+# not published (below).
+changelog_update = true
+dependencies_update = true
+publish = true
+release = true
+git_release_enable = false
+git_tag_enable = false
+# Publish only when a release PR is merged, not on every push to main that
+# carries an unpublished version.
+release_always = false
+pr_branch_prefix = "release-plz/"
+pr_labels = ["release"]
+
+# The CLI and the server binary. The crates.io name was the old git sync library
+# from sapphire-workspace (0.12.1), so this app starts at 0.13.0.
+[[package]]
+name = "sapphire-sync"
+git_tag_enable = true
+git_release_enable = true
+git_tag_name = "v{{ version }}"
+git_release_name = "v{{ version }}"
+version_group = "app"
+
+[[package]]
+name = "sapphire-sync-core"
+version_group = "app"
+
+# GitHub-release-only binary crate. `release = true` is load-bearing:
+# release-plz silently skips a crate whose Cargo.toml has `publish = false`
+# unless it is set, and it tells whether a version is released by its git tag,
+# so the desktop app keeps a tag of its own.
+[[package]]
+name = "sapphire-sync-desktop"
+publish = false
+release = true
+git_tag_enable = true
+git_release_enable = true
+git_tag_name = "desktop-v{{ version }}"
+git_release_name = "desktop-v{{ version }}"
+version_group = "app"
+
+# The server's own API carries its own version: its major is the handshake's
+# `app_api` (`API_VERSION`, derived in src/lib.rs), so it must not move with
+# version_group "app" — like sapphire-framework-bridge-api and -server-api.
+[[package]]
+name = "sapphire-sync-api"
