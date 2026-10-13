@@ -8,7 +8,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-sapphire-framework = { version = "0.16.0", default-features = false, features = ["gui"] }
+sapphire-framework = { version = "0.18.0", default-features = false, features = ["gui"] }
 eframe = "0.36"
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 tracing.workspace = true
