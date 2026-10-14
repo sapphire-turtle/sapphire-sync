@@ -1,6 +1,8 @@
 [package]
 name = "sapphire-sync-desktop"
-version.workspace = true
+# Versioned on its own, not with the app's crates: the GUI can change without
+# them, and they without it.
+version = "0.13.0"
 edition.workspace = true
 description = "Desktop GUI for sapphire-sync"
 license.workspace = true

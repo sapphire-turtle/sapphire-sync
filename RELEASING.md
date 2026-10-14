@@ -16,10 +16,12 @@ Nothing is published by a push that is not a release PR's merge (`release_always
 | --- | --- | --- | --- |
 | `sapphire-sync` (CLI and server) | `workspace.package.version` | crates.io | `v{version}` |
 | `sapphire-sync-core` | `workspace.package.version` | crates.io | — |
-| `sapphire-sync-desktop` | `workspace.package.version` | GitHub release only | `desktop-v{version}` |
+| `sapphire-sync-desktop` | its own | GitHub release only | `desktop-v{version}` |
 | `sapphire-sync-api` | its own | crates.io | — |
 
-The first three are one version group: they always move together.
+`sapphire-sync` and `sapphire-sync-core` are one version group: they always move together.
+
+`sapphire-sync-desktop` is versioned on its own, so a change to the GUI alone releases only the desktop app. It is not published to crates.io, so release-plz reads its current version from its `desktop-v{version}` tags (`git_only = true`); without `git_only`, release-plz skips a `publish = false` crate without a word.
 
 `sapphire-sync-api` is the server's own API. Its major version is the `app_api` the server reports in the IPC handshake (`API_VERSION`, parsed from the crate version at compile time), so it moves only when that API changes, the way `sapphire-framework-bridge-api` and `sapphire-framework-server-api` do. A breaking change to its methods or types is a major release of it (mark the commit with `!`); a new method is a minor release. A sapphire-sync release that leaves it alone does not demand that every client and server on a host be replaced together.
 
