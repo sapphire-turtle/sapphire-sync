@@ -5,11 +5,28 @@
 ## What this is
 
 sapphire-sync is a peer-to-peer file-sync application built on
-[sapphire-framework](https://github.com/fluo10/sapphire-framework). It is the
+[sapphire-framework](https://github.com/sapphire-turtle/sapphire-framework). It is the
 smallest useful app the framework can carry: a sync-only reference app, in the
 Syncthing style — a bare invocation of the binary runs the embedded server, and
 every other subcommand is a one-shot client that talks to that server over the
 local IPC endpoint.
+
+## Install
+
+```sh
+# Linux, macOS
+curl -fsSL https://raw.githubusercontent.com/sapphire-turtle/sapphire-framework/main/install/install.sh | sh -s -- sync
+```
+
+```powershell
+# Windows
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sapphire-turtle/sapphire-framework/main/install/install.ps1))) sync
+```
+
+This installs `sapphire-sync` together with `sapphire-bridge`, which it syncs
+through, into `~/.local/bin`. Add `sync-desktop` for the desktop app. See the
+[install script's README](https://github.com/sapphire-turtle/sapphire-framework/tree/main/install)
+for the options.
 
 ## Quick start
 
@@ -60,10 +77,9 @@ One-shot verbs never start the daemon. When no server is listening they print
 
 `sapphire-sync-desktop` is a GUI client of the installed services: it shows the
 framework's sync panel and never runs a server or bridge itself, so closing the
-window does not stop sync. Build it with
-`cargo build -p sapphire-sync-desktop --release` and ship it beside
-`sapphire-sync` and `sapphire-bridge`, so its "Install & start service" buttons
-can find them.
+window does not stop sync. Install it beside `sapphire-sync` and
+`sapphire-bridge` (`sh -s -- sync sync-desktop` above), so its "Install & start
+service" buttons can find them.
 
 On Windows it renders with Vulkan, because the DX12 device is lost whenever a
 Remote Desktop session reconnects; elsewhere wgpu picks its usual backend. Set
@@ -72,6 +88,6 @@ Vulkan overlay layer can do that), run it with `WGPU_BACKEND=dx12`.
 
 ## Links
 
-- [sapphire-framework](https://github.com/fluo10/sapphire-framework) — the
+- [sapphire-framework](https://github.com/sapphire-turtle/sapphire-framework) — the
   framework this app builds on
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute to this repository

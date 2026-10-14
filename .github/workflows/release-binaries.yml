@@ -1,0 +1,46 @@
+name: Release binaries
+
+# Builds a binary for the four release platforms and attaches it to an existing
+# release. release-plz.yml calls it after a release; run it by hand to
+# (re)upload the files for an existing tag.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      target:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to attach binaries to (e.g. v0.13.0 or desktop-v0.13.0).'
+        required: true
+        type: string
+      target:
+        required: true
+        type: choice
+        options: [cli, desktop]
+
+jobs:
+  cli:
+    if: inputs.target == 'cli'
+    permissions:
+      contents: write
+    uses: sapphire-turtle/sapphire-framework/.github/workflows/shared-release-binary.yml@main
+    with:
+      tag: ${{ inputs.tag }}
+      package: sapphire-sync
+      binary: sapphire-sync
+
+  desktop:
+    if: inputs.target == 'desktop'
+    permissions:
+      contents: write
+    uses: sapphire-turtle/sapphire-framework/.github/workflows/shared-release-binary.yml@main
+    with:
+      tag: ${{ inputs.tag }}
+      package: sapphire-sync-desktop
+      binary: sapphire-sync-desktop
+      linux-packages: libwayland-dev libxkbcommon-dev
