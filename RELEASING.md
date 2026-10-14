@@ -6,7 +6,7 @@ Releases for this repository are automated with [release-plz](https://release-pl
 
 1. When changes are pushed to `main`, release-plz creates or updates a release PR.
 2. Review the release PR (versions, each crate's `CHANGELOG.md`, `Cargo.toml`).
-3. Merging the PR publishes the crates to crates.io and creates the tags and GitHub releases, then builds the binaries (Linux x86_64 / aarch64, macOS aarch64, Windows x86_64) and attaches them to those releases. To (re)upload them for an existing tag, run "Release sapphire-sync binaries" or "Release sapphire-sync-desktop binaries" manually with that tag.
+3. Merging the PR publishes the crates to crates.io and creates the tags and GitHub releases, then builds the binaries (Linux x86_64 / aarch64, macOS aarch64, Windows x86_64) and attaches them to those releases. To (re)upload them for an existing tag, run "Release binaries" manually with that tag and `cli` or `desktop`. The build itself is sapphire-framework's shared `shared-release-binary.yml`.
 
 Nothing is published by a push that is not a release PR's merge (`release_always = false`), even when `Cargo.toml` carries a version crates.io does not have yet.
 

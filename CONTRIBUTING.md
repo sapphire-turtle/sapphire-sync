@@ -2,7 +2,7 @@
 
 This repository's own rules. Family-wide conventions — commit style, the
 doc-comment rule, the English-code convention — live in the
-[sapphire-framework CONTRIBUTING.md](https://github.com/fluo10/sapphire-framework/blob/main/CONTRIBUTING.md).
+[sapphire-framework CONTRIBUTING.md](https://github.com/sapphire-turtle/sapphire-framework/blob/main/CONTRIBUTING.md).
 Link, don't copy.
 
 ## Repository layout
@@ -24,14 +24,16 @@ crate of its own.
 
 ## CI
 
-`.github/workflows/ci.yml` runs an ubuntu + windows matrix over four steps:
-`cargo fmt --all -- --check`, `cargo clippy --all-targets --all-features --
--D warnings`, `cargo test --all-features --locked`, and a dependency guard —
-the default build's `cargo tree -p sapphire-sync` must not contain `fastembed`,
-`ort` or `ort-sys` (the embedding stack, the heavy part of search).
-`sapphire-framework-retrieve` itself is expected: the framework's workspace
-layer depends on it in every app, and without `fastembed-embed` it brings only
-full-text search.
+`.github/workflows/ci.yml` calls sapphire-framework's shared Rust CI
+([ci/README.md](https://github.com/sapphire-turtle/sapphire-framework/blob/main/ci/README.md)):
+`cargo fmt --check`, then `cargo clippy -D warnings` and `cargo test --locked`
+over every crate but the desktop app, on Linux x86_64 (`ci / test`) and on Linux
+aarch64, macOS and Windows (`ci / test-platforms`). On Linux x86_64 it then runs
+a dependency guard — the default build's `cargo tree -p sapphire-sync` must not
+contain `fastembed`, `ort` or `ort-sys` (the embedding stack, the heavy part of
+search). `sapphire-framework-retrieve` itself is expected: the framework's
+workspace layer depends on it in every app, and without `fastembed-embed` it
+brings only full-text search.
 
 ## What belongs here
 

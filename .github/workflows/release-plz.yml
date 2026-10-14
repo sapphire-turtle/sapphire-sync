@@ -1,113 +1,43 @@
 name: Release-plz
 
+# The CLI and the server (`sapphire-sync`) are tagged `v{version}`, the desktop
+# app `desktop-v{version}` (release-plz.toml). Each gets its binaries built once
+# release-plz has made its release.
 on:
   push:
     branches:
       - main
   workflow_dispatch:
 
-# Keep the release command and the release PR from racing on the same branch:
-# while one release-plz run is in flight, the next one waits.
+# Keep the release command and the release PR from racing on the same branch.
 concurrency:
   group: release-plz-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release-plz-release:
-    name: Release-plz release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      releases: ${{ steps.release.outputs.releases }}
-      releases_created: ${{ steps.release.outputs.releases_created }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
-
-      # Toolchain comes from rust-toolchain.toml; rustup installs it on first use.
-      - name: Install the pinned toolchain
-        run: cargo --version
-
-      # grain-id needs protoc (prost-build).
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
-
-      - id: release
-        uses: release-plz/action@v0.5
-        with:
-          command: release
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-  # Fan out to the binary builds, each only when release-plz reported a release
-  # for that package on this push. They are called here rather than started by
-  # `on: push: tags`, which does not fire for tags a workflow pushes.
-  parse-releases:
-    name: Parse release-plz output
-    needs: release-plz-release
-    if: needs.release-plz-release.outputs.releases_created == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      cli_tag: ${{ steps.parse.outputs.cli_tag }}
-      desktop_tag: ${{ steps.parse.outputs.desktop_tag }}
-    steps:
-      - id: parse
-        env:
-          RELEASES: ${{ needs.release-plz-release.outputs.releases }}
-        run: |
-          cli_tag=$(jq -r '.[] | select(.package_name == "sapphire-sync") | .tag // empty' <<<"$RELEASES")
-          desktop_tag=$(jq -r '.[] | select(.package_name == "sapphire-sync-desktop") | .tag // empty' <<<"$RELEASES")
-          {
-            echo "cli_tag=$cli_tag"
-            echo "desktop_tag=$desktop_tag"
-          } >> "$GITHUB_OUTPUT"
-
-  build-cli:
-    name: Build sapphire-sync binaries
-    needs: parse-releases
-    if: needs.parse-releases.outputs.cli_tag != ''
-    permissions:
-      contents: write
-    uses: ./.github/workflows/release-cli.yml
-    with:
-      tag: ${{ needs.parse-releases.outputs.cli_tag }}
-
-  build-desktop:
-    name: Build sapphire-sync-desktop binaries
-    needs: parse-releases
-    if: needs.parse-releases.outputs.desktop_tag != ''
-    permissions:
-      contents: write
-    uses: ./.github/workflows/release-desktop.yml
-    with:
-      tag: ${{ needs.parse-releases.outputs.desktop_tag }}
-
-  release-plz-pr:
-    name: Release-plz PR
-    runs-on: ubuntu-latest
+  release-plz:
     permissions:
       contents: write
       pull-requests: write
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
+    uses: sapphire-turtle/sapphire-framework/.github/workflows/shared-release-plz.yml@main
+    secrets: inherit
 
-      # Toolchain comes from rust-toolchain.toml; rustup installs it on first use.
-      - name: Install the pinned toolchain
-        run: cargo --version
+  build-cli:
+    needs: release-plz
+    if: contains(fromJSON(needs.release-plz.outputs.packages), 'sapphire-sync')
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release-binaries.yml
+    with:
+      tag: ${{ fromJSON(needs.release-plz.outputs.tags)['sapphire-sync'] }}
+      target: cli
 
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
-
-      - uses: release-plz/action@v0.5
-        with:
-          command: release-pr
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+  build-desktop:
+    needs: release-plz
+    if: contains(fromJSON(needs.release-plz.outputs.packages), 'sapphire-sync-desktop')
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release-binaries.yml
+    with:
+      tag: ${{ fromJSON(needs.release-plz.outputs.tags)['sapphire-sync-desktop'] }}
+      target: desktop

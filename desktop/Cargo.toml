@@ -5,7 +5,7 @@ name = "sapphire-sync-desktop"
 version = "0.13.0"
 edition.workspace = true
 description = "Desktop GUI for sapphire-sync"
-license.workspace = true
+license-file = "LICENSE"
 repository.workspace = true
 publish = false
 

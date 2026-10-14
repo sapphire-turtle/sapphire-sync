@@ -4,11 +4,28 @@
 
 ## どんなものか
 
-sapphire-sync は [sapphire-framework](https://github.com/fluo10/sapphire-framework)
+sapphire-sync は [sapphire-framework](https://github.com/sapphire-turtle/sapphire-framework)
 の上に作った P2P ファイル同期アプリです。フレームワークが担えるいちばん小さなアプリ——
 同期専用のリファレンスアプリです。Syncthing と同じ考え方で、サブコマンドなしの起動は
 組み込みサーバーそのものになり、そのほかのサブコマンドはローカル IPC 経由でサーバーに
 話しかけるワンショットのクライアントになります。
+
+## インストール
+
+```sh
+# Linux, macOS
+curl -fsSL https://raw.githubusercontent.com/sapphire-turtle/sapphire-framework/main/install/install.sh | sh -s -- sync
+```
+
+```powershell
+# Windows
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sapphire-turtle/sapphire-framework/main/install/install.ps1))) sync
+```
+
+`sapphire-sync` と、同期に使う `sapphire-bridge` が一緒に `~/.local/bin` へ入ります。
+デスクトップアプリも入れるには `sync-desktop` を足してください。オプションは
+[インストールスクリプトの README](https://github.com/sapphire-turtle/sapphire-framework/tree/main/install)
+を参照してください。
 
 ## クイックスタート
 
@@ -58,9 +75,8 @@ $ sapphire-sync workspace show      # このホストのワークスペースと
 `sapphire-sync-desktop` は、インストール済みサービスの GUI クライアントです。
 フレームワークの同期パネルを表示するだけで、サーバーもブリッジも自分では
 起動しません。ウィンドウを閉じても同期は止まりません。
-`cargo build -p sapphire-sync-desktop --release` でビルドし、「Install & start
-service」ボタンが見つけられるよう `sapphire-sync` と `sapphire-bridge` の
-隣に置いて配布してください。
+「Install & start service」ボタンが見つけられるよう、`sapphire-sync` と
+`sapphire-bridge` と同じ場所に入れてください（上の `sh -s -- sync sync-desktop`）。
 
 Windows では Vulkan で描画します。DX12 のデバイスはリモートデスクトップの
 再接続のたびに失われるためです。それ以外の OS では wgpu の通常の選択に
@@ -70,6 +86,19 @@ Windows では Vulkan で描画します。DX12 のデバイスはリモート�
 
 ## リンク
 
-- [sapphire-framework](https://github.com/fluo10/sapphire-framework) — このアプリが
+- [sapphire-framework](https://github.com/sapphire-turtle/sapphire-framework) — このアプリが
   基づくフレームワーク
 - [CONTRIBUTING.md](CONTRIBUTING.md) — このリポジトリへの貢献方法
+
+## ライセンス
+
+このリポジトリは異なるライセンスのコンポーネントを含みます：
+
+| コンポーネント | ライセンス |
+|-----------|---------|
+| `sapphire-sync`（`cli/`） | MIT OR Apache-2.0 |
+| `sapphire-sync-core` | MIT OR Apache-2.0 |
+| `sapphire-sync-api` | MIT OR Apache-2.0 |
+| `sapphire-sync-desktop` | GPL-3.0-or-later、[App Storeマーケットプレイス例外](desktop/LICENSE.App-Store-Exception)付き |
+
+各コンポーネントのディレクトリにある`LICENSE`（または`LICENSE-MIT` / `LICENSE-APACHE`）ファイルに完全なライセンス文書があります。
