@@ -31,13 +31,16 @@ peer it talks to is the `sapphire-bridge` app; run exactly one
 `sapphire-sync serve` per host. The server serves one workspace at a time
 (`workspace select` switches it); the `SyncRuntime` mounts its replica and
 registers it with the bridge; the app itself implements
-nothing of the replication engine.
+nothing of the replication engine. The two may start in either order: a
+server whose bridge is not running yet serves without sync and connects once
+the bridge is up, and again after the bridge restarts.
 
 ## Status output
 
 `sapphire-sync status` prints the framework's rows (app, version, endpoint) plus
 this app's per-workspace rows — one line per synced workspace, rendered from the
-live `SyncRuntime`.
+live `SyncRuntime` — after a `bridge: not connected; reconnecting` line while the
+server has no connection to the bridge.
 
 ## `.sapphireignore`
 

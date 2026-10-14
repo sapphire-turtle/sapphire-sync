@@ -62,7 +62,7 @@ async fn run(cli: cli::Cli) -> anyhow::Result<()> {
         // the one the service manager starts (`service_spec` is `["serve"]`),
         // so it must get the sync-mounted server, not the one-shot one.
         Some(cli::AppCommand::Framework(FrameworkCommand::Serve)) => {
-            let server = server::build_serve().await?;
+            let server = server::build_serve()?;
             let code = FrameworkCommand::Serve.dispatch(server, version).await?;
             std::process::exit(code);
         }
@@ -78,7 +78,7 @@ async fn run(cli: cli::Cli) -> anyhow::Result<()> {
         // invocation *is* the framework's server verb, which is the only place
         // the bridge is opened.
         None => {
-            let server = server::build_serve().await?;
+            let server = server::build_serve()?;
             let code = FrameworkCommand::default()
                 .dispatch(server, version)
                 .await?;

@@ -94,6 +94,9 @@ async fn disable() -> anyhow::Result<i32> {
 /// replication is paused. A workspace that is not synced has no row: the
 /// framework's own `workspace show` already reports the server's workspace
 /// and whether it syncs.
+///
+/// While the runtime has no connection to the bridge, a first `bridge` row says
+/// so: the framework reconnects on its own, and until then nothing syncs.
 pub fn status_rows(runtime: Arc<SyncRuntime>) -> Arc<dyn Fn() -> Vec<StatusRow> + Send + Sync> {
     Arc::new(move || {
         // The closure is sync (the framework calls it from a sync context),
@@ -107,12 +110,16 @@ pub fn status_rows(runtime: Arc<SyncRuntime>) -> Arc<dyn Fn() -> Vec<StatusRow> 
             // The runtime holds its roots in a map; report them in a stable
             // order.
             roots.sort();
-            roots
-                .iter()
-                .filter_map(|root| {
+            let bridge = (!runtime.is_connected()).then(|| StatusRow {
+                name: "bridge".to_owned(),
+                value: "not connected; reconnecting".to_owned(),
+            });
+            bridge
+                .into_iter()
+                .chain(roots.iter().filter_map(|root| {
                     let status = handle.block_on(runtime.status(root));
                     status.enabled.then(|| row_for(root, &status))
-                })
+                }))
                 .collect()
         })
     })
@@ -138,4 +145,28 @@ fn row_for(root: &Path, status: &SyncStatus) -> StatusRow {
 /// `N peer(s)`, singular for one — the framework's own pluralisation.
 fn peers_text(peers: usize) -> String {
     format!("{peers} peer{}", if peers == 1 { "" } else { "s" })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sapphire_sync_core::framework::ipc::ManagedBy;
+    use sapphire_sync_core::framework::server::BridgeConnector;
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_runtime_without_its_bridge_says_so_first() {
+        // No bridge running: the connector finds none, and the runtime waits.
+        let runtime = Arc::new(SyncRuntime::connecting(
+            &CTX,
+            BridgeConnector::new(|| async { Ok(None) }),
+            "/bin/true".into(),
+            ManagedBy::Service,
+        ));
+        runtime.connect().await.unwrap();
+
+        let rows = status_rows(runtime)();
+        assert_eq!(rows.len(), 1, "{rows:?}");
+        assert_eq!(rows[0].name, "bridge");
+        assert_eq!(rows[0].value, "not connected; reconnecting");
+    }
 }
