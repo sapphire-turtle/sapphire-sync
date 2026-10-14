@@ -1,4 +1,4 @@
-//! The whole command surface parses, and a bare invocation is `serve`.
+//! The whole command surface parses, and a bare invocation prints the help.
 //!
 //! Modelled on the framework's `command::tests` (the probes that pinned the
 //! same shapes for `FrameworkCommand` itself). These tests reach the binary's
@@ -21,24 +21,24 @@ fn parse(args: &[&str]) -> Cli {
         .unwrap_or_else(|err| panic!("{args:?} must parse: {err}"))
 }
 
-/// A bare invocation parses to `app: None`; the framework's half is then the
-/// enum's default, `Serve` — the same thing the service unit runs.
+/// A bare invocation prints the help, as the framework recommends; the
+/// service unit runs `serve`.
 #[test]
-fn a_bare_invocation_is_serve() {
-    let cli = parse(&[]);
-    assert!(cli.app.is_none(), "bare invocation has no app verb");
-    assert_eq!(cli.workspace.workspace_dir, None);
-    assert!(matches!(
-        FrameworkCommand::default(),
-        FrameworkCommand::Serve
-    ));
+fn a_bare_invocation_prints_the_help() {
+    let err = Cli::try_parse_from(["sapphire-sync"])
+        .err()
+        .expect("a bare invocation does not parse");
+    assert_eq!(
+        err.kind(),
+        clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand
+    );
 }
 
 #[test]
 fn serve_parses_as_the_framework_verb() {
     let cli = parse(&["serve"]);
     match cli.app {
-        Some(AppCommand::Framework(FrameworkCommand::Serve)) => {}
+        AppCommand::Framework(FrameworkCommand::Serve) => {}
         other => panic!("`serve` must parse as the framework's, got {other:?}"),
     }
 }
@@ -47,7 +47,7 @@ fn serve_parses_as_the_framework_verb() {
 fn status_parses() {
     let cli = parse(&["status"]);
     match cli.app {
-        Some(AppCommand::Framework(FrameworkCommand::Status)) => {}
+        AppCommand::Framework(FrameworkCommand::Status) => {}
         other => panic!("`status` must parse as the framework's, got {other:?}"),
     }
 }
@@ -61,7 +61,7 @@ fn the_service_subcommands_parse() {
     ] {
         let cli = parse(&args);
         match cli.app {
-            Some(AppCommand::Framework(FrameworkCommand::Service(_))) => {}
+            AppCommand::Framework(FrameworkCommand::Service(_)) => {}
             other => panic!("{args:?} must parse as the framework's service, got {other:?}"),
         }
     }
@@ -75,11 +75,18 @@ fn the_workspace_subcommands_parse() {
         vec!["workspace", "init", "--sync"],
         vec!["workspace", "select", "notes"],
         vec!["workspace", "show"],
-        vec!["workspace", "map", "notes", "/srv/notes"],
+        vec![
+            "workspace",
+            "init",
+            "--sync",
+            "--remote-workspace",
+            "notes",
+            "/srv/notes",
+        ],
     ] {
         let cli = parse(&args);
         match cli.app {
-            Some(AppCommand::Framework(FrameworkCommand::Workspace(_))) => {}
+            AppCommand::Framework(FrameworkCommand::Workspace(_)) => {}
             other => panic!("{args:?} must parse as the framework's workspace, got {other:?}"),
         }
     }
@@ -90,8 +97,8 @@ fn workgroup_and_device_lists_parse() {
     for args in [vec!["workgroup", "list"], vec!["device", "list"]] {
         let cli = parse(&args);
         match cli.app {
-            Some(AppCommand::Framework(FrameworkCommand::Workgroup(_)))
-            | Some(AppCommand::Framework(FrameworkCommand::Device(_))) => {}
+            AppCommand::Framework(FrameworkCommand::Workgroup(_))
+            | AppCommand::Framework(FrameworkCommand::Device(_)) => {}
             other => panic!("{args:?} must parse as the framework's, got {other:?}"),
         }
     }
@@ -101,7 +108,7 @@ fn workgroup_and_device_lists_parse() {
 fn the_apps_own_sync_verb_parses() {
     let cli = parse(&["sync", "disable"]);
     match cli.app {
-        Some(AppCommand::Sync(command)) => {
+        AppCommand::Sync(command) => {
             assert!(matches!(command.command, SyncSubcommand::Disable));
         }
         other => panic!("`sync disable` must parse as the app's, got {other:?}"),

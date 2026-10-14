@@ -7,9 +7,9 @@
 sapphire-sync is a peer-to-peer file-sync application built on
 [sapphire-framework](https://github.com/fluo10/sapphire-framework). It is the
 smallest useful app the framework can carry: a sync-only reference app, in the
-Syncthing style — a bare invocation of the binary runs the embedded server, and
-every other subcommand is a one-shot client that talks to that server over the
-local IPC endpoint.
+Syncthing style — `serve` runs the embedded server, and every other subcommand
+is a one-shot client that talks to that server over the local IPC endpoint. A
+bare invocation prints the help.
 
 ## Quick start
 
