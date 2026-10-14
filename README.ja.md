@@ -89,3 +89,16 @@ Windows では Vulkan で描画します。DX12 のデバイスはリモート�
 - [sapphire-framework](https://github.com/sapphire-turtle/sapphire-framework) — このアプリが
   基づくフレームワーク
 - [CONTRIBUTING.md](CONTRIBUTING.md) — このリポジトリへの貢献方法
+
+## ライセンス
+
+このリポジトリは異なるライセンスのコンポーネントを含みます：
+
+| コンポーネント | ライセンス |
+|-----------|---------|
+| `sapphire-sync`（`cli/`） | MIT OR Apache-2.0 |
+| `sapphire-sync-core` | MIT OR Apache-2.0 |
+| `sapphire-sync-api` | MIT OR Apache-2.0 |
+| `sapphire-sync-desktop` | GPL-3.0-or-later、[App Storeマーケットプレイス例外](desktop/LICENSE.App-Store-Exception)付き |
+
+各コンポーネントのディレクトリにある`LICENSE`（または`LICENSE-MIT` / `LICENSE-APACHE`）ファイルに完全なライセンス文書があります。

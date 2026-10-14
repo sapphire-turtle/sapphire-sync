@@ -91,3 +91,16 @@ Vulkan overlay layer can do that), run it with `WGPU_BACKEND=dx12`.
 - [sapphire-framework](https://github.com/sapphire-turtle/sapphire-framework) — the
   framework this app builds on
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute to this repository
+
+## License
+
+This repository contains components under different licenses:
+
+| Component | License |
+|-----------|---------|
+| `sapphire-sync` (`cli/`) | MIT OR Apache-2.0 |
+| `sapphire-sync-core` | MIT OR Apache-2.0 |
+| `sapphire-sync-api` | MIT OR Apache-2.0 |
+| `sapphire-sync-desktop` | GPL-3.0-or-later, with [App Store marketplace exception](desktop/LICENSE.App-Store-Exception) |
+
+See the `LICENSE` (or `LICENSE-MIT` / `LICENSE-APACHE`) file in each component's directory for the full license text.
