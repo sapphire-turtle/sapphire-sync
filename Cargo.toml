@@ -11,7 +11,7 @@ resolver = "3"
 [workspace.package]
 # The CLI and the core move together; `sapphire-sync-desktop` and
 # `sapphire-sync-api` are versioned on their own.
-version = "0.13.0"
+version = "0.14.0"
 description = "A sync-only reference app for sapphire-framework - simple P2P file sync over iroh, CLI with embedded server"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/sapphire-turtle/sapphire-sync"
@@ -60,8 +60,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # local crates
-sapphire-sync-core = { path = "crates/sapphire-sync-core", version = "0.13.0" }
-sapphire-sync-api = { path = "crates/sapphire-sync-api", version = "1.0.0" }
+sapphire-sync-core = { path = "crates/sapphire-sync-core", version = "0.14.0" }
+sapphire-sync-api = { path = "crates/sapphire-sync-api", version = "1.0.1" }
 
 [profile.dev.package."*"]
 opt-level = 1
