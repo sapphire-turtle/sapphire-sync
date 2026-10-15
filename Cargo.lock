@@ -4425,7 +4425,7 @@ dependencies = [
 
 [[package]]
 name = "sapphire-sync"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -4445,11 +4445,11 @@ dependencies = [
 
 [[package]]
 name = "sapphire-sync-api"
-version = "1.0.0"
+version = "1.0.1"
 
 [[package]]
 name = "sapphire-sync-core"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4464,7 +4464,7 @@ dependencies = [
 
 [[package]]
 name = "sapphire-sync-desktop"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "eframe",
  "sapphire-framework",

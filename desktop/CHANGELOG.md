@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0](https://github.com/sapphire-turtle/sapphire-sync/compare/desktop-v0.13.0...desktop-v0.14.0) - 2026-10-15
+
+### Added
+
+- *(cli)* [**breaking**] sapphire-framework 0.20.0; print the help on a bare invocation
+- *(cli)* serve before the bridge is up, and reconnect after it restarts
+
+### Other
+
+- Merge pull request #16 from sapphire-turtle/chore/framework-0.19
+- *(license)* per-component license files; desktop under GPL-3.0-or-later
+
 ## [0.13.0](https://github.com/sapphire-turtle/sapphire-sync/releases/tag/desktop-v0.13.0) - 2026-10-14
 
 ### Added
