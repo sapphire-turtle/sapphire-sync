@@ -9,32 +9,25 @@
 
 use clap::{Parser, Subcommand};
 
-use sapphire_sync_core::framework::workspace::WorkspaceArgs;
-
 // The framework's command enum, re-exported so the tests' `use cli::…` reads
 // the same surface `main.rs` sees through `sapphire_sync_core`.
 pub use sapphire_sync_core::framework::server::FrameworkCommand;
 
 /// The command line of the one binary this app ships.
 ///
-/// A bare invocation parses to `app: None`; the framework's half is then the
-/// enum's default value, `Serve`, so "run the server" and `serve` are the
-/// same thing.
+/// A bare invocation prints the help; the service manager starts the binary
+/// with `serve`.
 #[derive(Parser)]
 #[command(
     name = "sapphire-sync",
+    arg_required_else_help = true,
     version,
     about = "P2P file sync over sapphire-framework"
 )]
 pub struct Cli {
     /// The app's own verbs, beside the framework's.
     #[command(subcommand)]
-    pub app: Option<AppCommand>,
-    /// The framework's global `--workspace-dir`. Still parsed, but no verb reads
-    /// it: every one-shot verb acts on the server's current workspace
-    /// (sapphire-framework#227 tracks removing it).
-    #[command(flatten)]
-    pub workspace: WorkspaceArgs,
+    pub app: AppCommand,
 }
 
 /// The command line's top level: the app's own verbs and the framework's, flat.

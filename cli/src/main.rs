@@ -24,10 +24,10 @@ fn main() {
     let cli = cli::Cli::parse();
 
     // First statement after parsing: what this process is decides where its
-    // state lives (and the secrets migration it runs). A bare invocation and
-    // `serve` are the server; every other verb is a one-shot CLI.
+    // state lives (and the secrets migration it runs). `serve` is the server;
+    // every other verb is a one-shot CLI.
     CTX.init(match cli.app {
-        None | Some(cli::AppCommand::Framework(FrameworkCommand::Serve)) => AppKind::Server,
+        cli::AppCommand::Framework(FrameworkCommand::Serve) => AppKind::Server,
         _ => AppKind::Cli,
     });
 
@@ -54,14 +54,14 @@ async fn run(cli: cli::Cli) -> anyhow::Result<()> {
     let version = env!("CARGO_PKG_VERSION");
     match cli.app {
         // The app's own verbs come first.
-        Some(cli::AppCommand::Sync(command)) => {
+        cli::AppCommand::Sync(command) => {
             let code = sync::dispatch(command).await?;
             std::process::exit(code);
         }
-        // An explicit `serve` is the same server as a bare invocation — and
-        // the one the service manager starts (`service_spec` is `["serve"]`),
-        // so it must get the sync-mounted server, not the one-shot one.
-        Some(cli::AppCommand::Framework(FrameworkCommand::Serve)) => {
+        // `serve` is the server the service manager starts (`service_spec` is
+        // `["serve"]`), so it must get the sync-mounted server, not the
+        // one-shot one. This is the only place the bridge is opened.
+        cli::AppCommand::Framework(FrameworkCommand::Serve) => {
             let server = server::build_serve()?;
             let code = FrameworkCommand::Serve.dispatch(server, version).await?;
             std::process::exit(code);
@@ -70,18 +70,8 @@ async fn run(cli: cli::Cli) -> anyhow::Result<()> {
         // server — `status` on a host without a running server must say the
         // framework's "no … server is running", not a bridge error — and the
         // exit code is the process's.
-        Some(cli::AppCommand::Framework(command)) => {
+        cli::AppCommand::Framework(command) => {
             let code = command.dispatch(server::build_oneshot(), version).await?;
-            std::process::exit(code);
-        }
-        // The parse default is `Serve`: a bare
-        // invocation *is* the framework's server verb, which is the only place
-        // the bridge is opened.
-        None => {
-            let server = server::build_serve()?;
-            let code = FrameworkCommand::default()
-                .dispatch(server, version)
-                .await?;
             std::process::exit(code);
         }
     }
