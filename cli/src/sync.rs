@@ -32,8 +32,8 @@ pub async fn dispatch(command: SyncCommand) -> anyhow::Result<i32> {
 ///
 /// A server serves one workspace (the framework's `workspace.current`), and
 /// `sync.disable` names none: it stops syncing that one. The verb takes no
-/// workspace of its own — neither the current directory nor
-/// `--workspace-dir` plays a part — so it acts on the server's workspace
+/// workspace of its own — the current directory plays no part — so it acts
+/// on the server's workspace
 /// wherever it is typed; `workspace select` is how to point the server at
 /// another. Connect-only, nothing is ever started.
 ///

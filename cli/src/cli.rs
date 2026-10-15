@@ -9,8 +9,6 @@
 
 use clap::{Parser, Subcommand};
 
-use sapphire_sync_core::framework::workspace::WorkspaceArgs;
-
 // The framework's command enum, re-exported so the tests' `use cli::…` reads
 // the same surface `main.rs` sees through `sapphire_sync_core`.
 pub use sapphire_sync_core::framework::server::FrameworkCommand;
@@ -30,11 +28,6 @@ pub struct Cli {
     /// The app's own verbs, beside the framework's.
     #[command(subcommand)]
     pub app: AppCommand,
-    /// The framework's global `--workspace-dir`. Still parsed, but no verb reads
-    /// it: every one-shot verb acts on the server's current workspace
-    /// (sapphire-framework#227 tracks removing it).
-    #[command(flatten)]
-    pub workspace: WorkspaceArgs,
 }
 
 /// The command line's top level: the app's own verbs and the framework's, flat.

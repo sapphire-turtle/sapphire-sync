@@ -116,24 +116,6 @@ fn the_apps_own_sync_verb_parses() {
 }
 
 #[test]
-fn the_global_workspace_dir_parses_everywhere() {
-    // Before the verb, after it, and after a deeper subcommand: `global = true`.
-    for args in [
-        vec!["--workspace-dir", "/tmp/x", "status"],
-        vec!["status", "--workspace-dir", "/tmp/x"],
-        vec!["workspace", "show", "--workspace-dir", "/tmp/x"],
-        vec!["sync", "disable", "--workspace-dir", "/tmp/x"],
-    ] {
-        let cli = parse(&args);
-        assert_eq!(
-            cli.workspace.workspace_dir.as_deref(),
-            Some(std::path::Path::new("/tmp/x")),
-            "{args:?}"
-        );
-    }
-}
-
-#[test]
 fn the_apps_sync_and_the_frameworks_groups_coexist() {
     // The parse-collision check: one level, both families' verbs.
     let Err(help) = Cli::try_parse_from(["sapphire-sync", "--help"]) else {
