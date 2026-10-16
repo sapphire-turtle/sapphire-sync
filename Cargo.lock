@@ -5771,7 +5771,6 @@ dependencies = [
  "sapphire-framework",
  "sapphire-sync-core",
  "sapphire-sync-ui",
- "tracing",
 ]
 
 [[package]]

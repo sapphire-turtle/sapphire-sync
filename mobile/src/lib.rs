@@ -33,14 +33,10 @@ pub fn create(setup: AppSetup<'_>) -> Box<dyn sapphire_framework::gui::eframe::A
     Box::new(App::new(setup))
 }
 
-/// GameActivity's entry: the activity's `AndroidApp`, run until Android destroys it.
+/// GameActivity's entry: the activity's `AndroidApp`. The app runs until Android destroys
+/// the activity, and the process ends with it (the framework's `run_android` never returns).
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: sapphire_framework::gui::mobile::AndroidApp) {
-    if let Err(err) =
-        sapphire_framework::gui::mobile::run_android(app, options(), build_server(), create)
-    {
-        // Logcat is installed by then: the last word on why the window could not run.
-        tracing::error!("sapphire-sync could not run: {err}");
-    }
+    sapphire_framework::gui::mobile::run_android(app, options(), build_server(), create)
 }

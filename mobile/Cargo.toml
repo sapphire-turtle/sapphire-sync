@@ -18,4 +18,3 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 sapphire-framework = { version = "0.21.0", default-features = false, features = ["mobile", "redb-store"] }
 sapphire-sync-core.workspace = true
 sapphire-sync-ui = { path = "../crates/sapphire-sync-ui" }
-tracing.workspace = true
