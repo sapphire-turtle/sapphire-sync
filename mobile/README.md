@@ -64,11 +64,12 @@ ticket, bringing a workspace over, sync both ways, Files and the text preview (J
 included), and no socket anywhere under the app's storage.
 
 - **Typing** goes through the framework's own bridge from GameActivity's text buffer
-  (winit 0.30 drops those events). Latin text, deletion and moving between fields work;
-  a Japanese IME's composition is wired (preedit, then commit) but not yet tried on a
-  device with a Japanese keyboard.
-- **Paste** reads the clipboard through JNI. `adb shell input text` drops characters past
-  ~150 at once; send long strings in pieces when testing.
+  (winit 0.30 drops those events). Latin text and moving between fields work on the
+  emulator; deletion and a Japanese IME's composition (preedit, then commit) are
+  unit-tested but not yet tried with a soft keyboard.
+- **Paste** reads the clipboard through JNI; only an empty clipboard has been tried (it
+  does nothing, and does not crash). `adb shell input text` drops characters past ~150
+  at once; send long strings in pieces when testing.
 - AndroidX's GameTextInput logs injected key events at debug level (`gti.InputConnection`)
   with their text. The app's own logs keep typed text out.
 - Some framework screens are laid out for a desktop (Workgroup puts two forms side by
