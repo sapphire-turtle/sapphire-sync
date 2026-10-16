@@ -5,6 +5,9 @@ members = [
     "crates/sapphire-sync-core",
     "crates/sapphire-sync-api",
     "crates/sapphire-sync-ui",
+    # The phone app. A member so it shares the lock file, not a default member: the
+    # desktop build needs no Android NDK.
+    "mobile",
 ]
 default-members = ["cli"]
 resolver = "3"
