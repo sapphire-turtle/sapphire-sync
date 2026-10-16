@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1](https://github.com/sapphire-turtle/sapphire-sync/compare/sapphire-sync-core-v0.14.0...sapphire-sync-core-v0.14.1) - 2026-10-16
+
+### Other
+
+- update Cargo.toml dependencies
+
 ## [0.14.0](https://github.com/sapphire-turtle/sapphire-sync/compare/sapphire-sync-core-v0.13.0...sapphire-sync-core-v0.14.0) - 2026-10-15
 
 ### Other
