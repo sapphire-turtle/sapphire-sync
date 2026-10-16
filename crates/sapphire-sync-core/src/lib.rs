@@ -24,3 +24,5 @@ pub static CTX: AppContext = AppContext::new("sapphire-sync");
 /// The sapphire-framework facade, re-exported so the CLI (which depends on
 /// this crate only) reaches the framework through it.
 pub use sapphire_framework as framework;
+
+pub mod serve;

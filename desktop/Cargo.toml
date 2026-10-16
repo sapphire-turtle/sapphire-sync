@@ -13,3 +13,5 @@ publish = false
 # `eframe`: `gui::app::run` starts the window, and `gui::{eframe, egui}` are the
 # versions it renders with.
 sapphire-framework = { version = "0.21.0", default-features = false, features = ["eframe"] }
+# The app's screens, shared with the phone app.
+sapphire-sync-ui = { path = "../crates/sapphire-sync-ui" }

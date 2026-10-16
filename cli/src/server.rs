@@ -23,16 +23,9 @@
 //!
 //! The IPC endpoint, the stop channel and the signals are `run()`'s business
 //! in both paths; the app installs nothing there.
-//!
-//! `ManagedBy` is the transport's, which `SyncRuntime` takes.
-
-use std::sync::Arc;
 
 use sapphire_sync_core::CTX;
-use sapphire_sync_core::framework::ipc::ManagedBy;
-use sapphire_sync_core::framework::server::{AppServer, BridgeConnector, SyncRuntime};
-
-use crate::sync;
+use sapphire_sync_core::framework::server::AppServer;
 
 /// The app's server for one-shot verbs: an `AppServer` with nothing mounted.
 ///
@@ -45,25 +38,6 @@ pub fn build_oneshot() -> AppServer {
     AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
 }
 
-/// The app's embedded server: sync runtime, `AppServer`.
-///
-/// Sync is mounted with [`AppServer::sync`]. The runtime is built here rather
-/// than by [`AppServer::sync_via_bridge`], which is the same runtime, because
-/// the status rows read it too. It is not connected yet: [`AppServer::run`]
-/// makes the first attempt, and keeps it connected from there.
-/// The app's own status rows are mounted with [`AppServer::status_rows`] —
-/// built from the same runtime, so a report reads the live sync state. The
-/// server reports the app's API version (`sapphire-sync-api`) in the
-/// handshake, so a client that names another is refused.
-pub fn build_serve() -> anyhow::Result<AppServer> {
-    let runtime = Arc::new(SyncRuntime::connecting(
-        &CTX,
-        BridgeConnector::standard(CTX.app_name, env!("CARGO_PKG_VERSION")),
-        std::env::current_exe()?,
-        ManagedBy::Service,
-    ));
-    Ok(AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
-        .app_api(sapphire_sync_api::API_VERSION)
-        .sync(Arc::clone(&runtime))
-        .status_rows(sync::status_rows(runtime)))
-}
+/// The app's embedded server, sync-mounted: shared with the phone app, so it
+/// lives in the core crate.
+pub use sapphire_sync_core::serve::build_serve;

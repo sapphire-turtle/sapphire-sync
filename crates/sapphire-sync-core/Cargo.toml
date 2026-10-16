@@ -10,13 +10,17 @@ keywords = ["sync", "p2p", "file-sync", "local-first"]
 
 [dependencies]
 sapphire-framework.workspace = true
+# The app's API version, which the server reports in its handshake.
+sapphire-sync-api.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 grain-id.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+# `block_in_place` for the status rows: the server's runtimes are multi-thread.
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 toml.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
