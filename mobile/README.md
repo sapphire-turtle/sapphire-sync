@@ -59,5 +59,19 @@ Android runs.
 
 ## Known issues
 
-See the end-to-end notes in the framework's plan
-(`docs/superpowers/plans/2026-10-16-mobile-android.md`) and the PR.
+Verified on the Android 15 x86_64 emulator (2026-10-16): pairing with a desktop by
+ticket, bringing a workspace over, sync both ways, Files and the text preview (Japanese
+included), and no socket anywhere under the app's storage.
+
+- **Typing** goes through the framework's own bridge from GameActivity's text buffer
+  (winit 0.30 drops those events). Latin text, deletion and moving between fields work;
+  a Japanese IME's composition is wired (preedit, then commit) but not yet tried on a
+  device with a Japanese keyboard.
+- **Paste** reads the clipboard through JNI. `adb shell input text` drops characters past
+  ~150 at once; send long strings in pieces when testing.
+- AndroidX's GameTextInput logs injected key events at debug level (`gti.InputConnection`)
+  with their text. The app's own logs keep typed text out.
+- Some framework screens are laid out for a desktop (Workgroup puts two forms side by
+  side); they work but are cramped on a phone.
+- Sync runs only while the app is open.
+- The release `.so` is ~60 MB per ABI before the APK compresses it.
