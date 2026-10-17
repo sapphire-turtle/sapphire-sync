@@ -4,6 +4,10 @@ members = [
     "desktop",
     "crates/sapphire-sync-core",
     "crates/sapphire-sync-api",
+    "crates/sapphire-sync-ui",
+    # The phone app. A member so it shares the lock file, not a default member: the
+    # desktop build needs no Android NDK.
+    "mobile",
 ]
 default-members = ["cli"]
 resolver = "3"
@@ -65,3 +69,25 @@ sapphire-sync-api = { path = "crates/sapphire-sync-api", version = "1.0.1" }
 
 [profile.dev.package."*"]
 opt-level = 1
+
+# TEMPORARY (mobile branch): the framework's unreleased `mobile` feature and in-process
+# IPC carrier, from its `feat/mobile-android` worktree. Replace with the release once
+# sapphire-framework publishes it.
+[patch.crates-io]
+sapphire-framework = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework" }
+sapphire-framework-backend = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-backend" }
+sapphire-framework-bridge = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-bridge" }
+sapphire-framework-bridge-api = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-bridge-api" }
+sapphire-framework-bridge-client = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-bridge-client" }
+sapphire-framework-gui = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-gui" }
+sapphire-framework-ipc = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-ipc" }
+sapphire-framework-registry = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-registry" }
+sapphire-framework-retrieve = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-retrieve" }
+sapphire-framework-server = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-server" }
+sapphire-framework-server-api = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-server-api" }
+sapphire-framework-service = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-service" }
+sapphire-framework-session = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-session" }
+sapphire-framework-sync = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-sync" }
+sapphire-framework-track = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-track" }
+sapphire-framework-update = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-update" }
+sapphire-framework-workspace = { path = "../sapphire-framework-wt-mobile/crates/sapphire-framework-workspace" }

@@ -1,0 +1,20 @@
+[package]
+name = "sapphire-sync-mobile"
+# The phone app, versioned on its own like the desktop app.
+version = "0.1.0"
+edition.workspace = true
+description = "sapphire-sync on a phone: Android now, iOS to follow"
+license-file = "LICENSE"
+repository.workspace = true
+publish = false
+
+[lib]
+name = "sapphire_sync_mobile"
+# `cdylib` is what Android loads; `staticlib` is what an iOS Xcode project links.
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+# `mobile`: the bridge and the server in this process, the window through the platform.
+sapphire-framework = { version = "0.21.0", default-features = false, features = ["mobile", "redb-store"] }
+sapphire-sync-core.workspace = true
+sapphire-sync-ui = { path = "../crates/sapphire-sync-ui" }
