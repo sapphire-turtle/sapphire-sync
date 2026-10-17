@@ -13,3 +13,24 @@ publish = false
 # `eframe`: `gui::app::run` starts the window, and `gui::{eframe, egui}` are the
 # versions it renders with.
 sapphire-framework = { version = "0.21.0", default-features = false, features = ["eframe"] }
+
+# `cargo binstall --git https://github.com/sapphire-turtle/sapphire-sync sapphire-sync-desktop`
+# downloads the release file instead of building it (this crate is not on crates.io), following
+# sapphire-framework's ci/README.md#conventions: the files are bare binaries named
+# `<binary>-<os>-<arch>`, so each release platform names its own. quick-install is a third
+# party's build: only this repository's files, or a build from source, are installed.
+[package.metadata.binstall]
+pkg-fmt = "bin"
+disabled-strategies = ["quick-install"]
+
+[package.metadata.binstall.overrides.x86_64-unknown-linux-gnu]
+pkg-url = "{ repo }/releases/download/desktop-v{ version }/{ name }-linux-x86_64"
+
+[package.metadata.binstall.overrides.aarch64-unknown-linux-gnu]
+pkg-url = "{ repo }/releases/download/desktop-v{ version }/{ name }-linux-aarch64"
+
+[package.metadata.binstall.overrides.aarch64-apple-darwin]
+pkg-url = "{ repo }/releases/download/desktop-v{ version }/{ name }-macos-aarch64"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/desktop-v{ version }/{ name }-windows-x86_64.exe"
