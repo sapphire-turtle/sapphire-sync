@@ -23,6 +23,9 @@ yanked = "warn"
 ignore = [
     # Unmaintained, with no vulnerability and no safe upgrade.
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained (author-declared); reached through sapphire-framework-gui (desktop) and egui's text stack. The suggested alternative (skrifa) is a different font stack." },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant is unmaintained as a standalone crate (merged into zbus 6). Reached via eframe > egui-winit > accesskit_winit > accesskit_unix (Linux screen reader support), whose latest release still pins zbus ^5.19 and atspi ^0.29. Drop when accesskit_unix moves to zbus 6." },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names is unmaintained as a standalone crate (merged into zbus 6). Same path and reason as RUSTSEC-2026-0370." },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is unmaintained as a standalone crate (merged into zbus 6). Same path and reason as RUSTSEC-2026-0370." },
 ]
 
 [licenses]

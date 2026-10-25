@@ -3,9 +3,10 @@
 //! Two builders, because the bridge connection belongs to the serve path only
 //! (the review of `0acb194` ruled the one-shot verbs bridge-less):
 //!
-//! - [`build_oneshot`] hands every one-shot framework verb a bare
-//!   [`AppServer`] — `dispatch` needs only the app name and the service spec,
-//!   and a CLI invocation must not open a bridge or fail with a bridge error.
+//! - [`build_oneshot`] hands every one-shot framework verb that needs a server
+//!   (`service`, `update`) a bare [`AppServer`] — `dispatch` needs only the app
+//!   name and the service spec, and a CLI invocation must not open a bridge or
+//!   fail with a bridge error.
 //!   A `status` on a host without a server answers the framework's "no
 //!   sapphire-sync server is running" and exits 1; a `workspace init` likewise
 //!   reports the absent server. Neither touches the bridge.
@@ -19,29 +20,33 @@
 //!   (sapphire-framework#244). `serve` on a host whose bridge is not running
 //!   yet serves without sync until it is; meanwhile `sync.*` answers "not
 //!   connected to sapphire-bridge". A bridge of another API version still
-//!   stops the start.
+//!   stops the start. `serve` calls it once per round of
+//!   `serve_restarting`, so a `server.restart` gets a fresh runtime.
 //!
 //! The IPC endpoint, the stop channel and the signals are `run()`'s business
 //! in both paths; the app installs nothing there.
 //!
 //! `ManagedBy` is the transport's, which `SyncRuntime` takes.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::ipc::ManagedBy;
-use sapphire_sync_core::framework::server::{AppServer, BridgeConnector, SyncRuntime};
+use sapphire_sync_core::framework::server::{AppServer, BridgeConnector, Settings, SyncRuntime};
 
 use crate::sync;
 
 /// The app's server for one-shot verbs: an `AppServer` with nothing mounted.
 ///
-/// Every [`FrameworkCommand`] except `Serve` dispatches against this: it reads
-/// `app_name()` (the endpoint to open) and `service_spec()` (what a service
-/// manager starts), and connects to a *running* server over IPC itself. A
-/// bridge-less, sync-less server is exactly what the framework's own status
-/// tests dispatch against.
-pub fn build_oneshot() -> AppServer {
+/// Every [`FrameworkCommand`] except `Serve` dispatches with this as its
+/// builder; the framework calls it only for the verbs that read the server
+/// (`service_spec()`, what a service manager starts). The others connect to a
+/// *running* server over IPC themselves. The app has no settings of its own,
+/// so `_settings` holds the framework's alone and nothing here reads them.
+///
+/// [`FrameworkCommand`]: sapphire_sync_core::framework::server::FrameworkCommand
+pub fn build_oneshot(_settings: &Settings) -> AppServer {
     AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
 }
 
@@ -55,15 +60,19 @@ pub fn build_oneshot() -> AppServer {
 /// built from the same runtime, so a report reads the live sync state. The
 /// server reports the app's API version (`sapphire-sync-api`) in the
 /// handshake, so a client that names another is refused.
-pub fn build_serve() -> anyhow::Result<AppServer> {
+///
+/// A new runtime per call: the framework's `serve_restarting` builds a server
+/// per round, and a server stops the runtime it was given when it stops. `exe`
+/// is this executable, looked up once by the caller.
+pub fn build_serve(_settings: &Settings, exe: &Path) -> AppServer {
     let runtime = Arc::new(SyncRuntime::connecting(
         &CTX,
         BridgeConnector::standard(CTX.app_name, env!("CARGO_PKG_VERSION")),
-        std::env::current_exe()?,
+        exe.to_path_buf(),
         ManagedBy::Service,
     ));
-    Ok(AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
+    AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
         .app_api(sapphire_sync_api::API_VERSION)
         .sync(Arc::clone(&runtime))
-        .status_rows(sync::status_rows(runtime)))
+        .status_rows(sync::status_rows(runtime))
 }

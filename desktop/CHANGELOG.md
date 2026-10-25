@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- [**breaking**] sapphire-framework 0.22.0: the settings pages, the synced theme and the English and Japanese translations come with it; the Files screen is translated too. Needs `sapphire-sync` and `sapphire-bridge` of the same release.
+
 ## [0.14.0](https://github.com/sapphire-turtle/sapphire-sync/compare/desktop-v0.13.0...desktop-v0.14.0) - 2026-10-15
 
 ### Added

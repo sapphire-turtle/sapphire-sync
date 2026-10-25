@@ -12,7 +12,7 @@ publish = false
 [dependencies]
 # `eframe`: `gui::app::run` starts the window, and `gui::{eframe, egui}` are the
 # versions it renders with.
-sapphire-framework = { version = "0.21.0", default-features = false, features = ["eframe"] }
+sapphire-framework = { version = "0.22.0", default-features = false, features = ["eframe"] }
 
 # `cargo binstall --git https://github.com/sapphire-turtle/sapphire-sync sapphire-sync-desktop`
 # downloads the release file instead of building it (this crate is not on crates.io), following
