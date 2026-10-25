@@ -60,18 +60,28 @@ async fn run(cli: cli::Cli) -> anyhow::Result<()> {
         }
         // `serve` is the server the service manager starts (`service_spec` is
         // `["serve"]`), so it must get the sync-mounted server, not the
-        // one-shot one. This is the only place the bridge is opened.
+        // one-shot one. This is the only place the bridge is opened. The
+        // framework builds it again on every in-place restart.
         cli::AppCommand::Framework(FrameworkCommand::Serve) => {
-            let server = server::build_serve()?;
-            let code = FrameworkCommand::Serve.dispatch(server, version).await?;
+            let exe = std::env::current_exe()?;
+            let code = FrameworkCommand::Serve
+                .dispatch(
+                    &CTX,
+                    (),
+                    |settings| server::build_serve(settings, &exe),
+                    version,
+                )
+                .await?;
             std::process::exit(code);
         }
         // Every other framework verb. One-shots dispatch against a bridge-less
         // server — `status` on a host without a running server must say the
         // framework's "no … server is running", not a bridge error — and the
-        // exit code is the process's.
+        // exit code is the process's. The app has no settings of its own (`()`).
         cli::AppCommand::Framework(command) => {
-            let code = command.dispatch(server::build_oneshot(), version).await?;
+            let code = command
+                .dispatch(&CTX, (), server::build_oneshot, version)
+                .await?;
             std::process::exit(code);
         }
     }
