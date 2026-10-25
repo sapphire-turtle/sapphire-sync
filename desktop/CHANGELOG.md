@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1](https://github.com/sapphire-turtle/sapphire-sync/compare/desktop-v0.14.0...desktop-v0.14.1) - 2026-10-25
+
+### Added
+
+- let cargo binstall install the release binaries
+- *(desktop)* lay the window out with the framework's Shell
+
+### Other
+
+- update to sapphire-framework 0.22
+- *(desktop)* start through sapphire-framework's gui::app::run
+
 ### Changed
 
 - [**breaking**] sapphire-framework 0.22.0: the settings pages, the synced theme and the English and Japanese translations come with it; the Files screen is translated too. Needs `sapphire-sync` and `sapphire-bridge` of the same release.

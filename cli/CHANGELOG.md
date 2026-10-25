@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1](https://github.com/sapphire-turtle/sapphire-sync/compare/v0.14.0...v0.14.1) - 2026-10-25
+
+### Added
+
+- let cargo binstall install the release binaries
+
+### Other
+
+- update to sapphire-framework 0.22
+- *(desktop)* start through sapphire-framework's gui::app::run
+
 ### Changed
 
 - [**breaking**] sapphire-framework 0.22.0. `serve` restarts in place on `server.restart`, the server's settings move from `server.toml` to `config.toml` (migrated on the first start), `config list|get|set|unset` reads and writes the settings, and `workgroup`, `device`, `embedding`, `external-device` and `workspace show` go through the running server. Upgrade `sapphire-bridge` together with this release: an older bridge fails the handshake.
