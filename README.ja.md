@@ -27,6 +27,15 @@ curl -fsSL https://raw.githubusercontent.com/sapphire-turtle/sapphire-framework/
 [インストールスクリプトの README](https://github.com/sapphire-turtle/sapphire-framework/tree/main/install)
 を参照してください。
 
+[cargo-binstall](https://github.com/cargo-bins/cargo-binstall) でも入れられます。同じリリースファイルを
+ビルドせずに `~/.cargo/bin` へダウンロードします。
+
+```sh
+cargo binstall sapphire-sync
+# デスクトップアプリは crates.io にない
+cargo binstall --git https://github.com/sapphire-turtle/sapphire-sync sapphire-sync-desktop
+```
+
 ## クイックスタート
 
 ```console

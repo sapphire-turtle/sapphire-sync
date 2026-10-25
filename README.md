@@ -28,6 +28,15 @@ through, into `~/.local/bin`. Add `sync-desktop` for the desktop app. See the
 [install script's README](https://github.com/sapphire-turtle/sapphire-framework/tree/main/install)
 for the options.
 
+Or with [cargo-binstall](https://github.com/cargo-bins/cargo-binstall), which downloads the
+same release files into `~/.cargo/bin` rather than building them:
+
+```sh
+cargo binstall sapphire-sync
+# The desktop app is not on crates.io
+cargo binstall --git https://github.com/sapphire-turtle/sapphire-sync sapphire-sync-desktop
+```
+
 ## Quick start
 
 ```console
