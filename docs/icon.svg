@@ -5,5 +5,5 @@
       <path d="M16.5 12a4.5 4.5 0 0 1-7.7 3.2"/><path d="M7.5 12a4.5 4.5 0 0 1 7.7-3.2"/><path d="M15.5 6.5v2.5H13"/><path d="M8.5 17.5V15H11"/>
     </g>
   </mask>
-  <rect width="24" height="24" fill="#3b6ae0" mask="url(#glyph)"/>
+  <rect width="24" height="24" fill="#4F7FD9" mask="url(#glyph)"/>
 </svg>
