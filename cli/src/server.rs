@@ -33,7 +33,9 @@ use std::sync::Arc;
 
 use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::ipc::ManagedBy;
-use sapphire_sync_core::framework::server::{AppServer, BridgeConnector, Settings, SyncRuntime};
+use sapphire_sync_core::framework::server::{
+    AppServer, BridgeConnector, ReleaseSource, Settings, SyncRuntime,
+};
 
 use crate::sync;
 
@@ -47,7 +49,7 @@ use crate::sync;
 ///
 /// [`FrameworkCommand`]: sapphire_sync_core::framework::server::FrameworkCommand
 pub fn build_oneshot(_settings: &Settings) -> AppServer {
-    AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
+    AppServer::new(&CTX, env!("CARGO_PKG_VERSION")).releases(release_source())
 }
 
 /// The app's embedded server: sync runtime, `AppServer`.
@@ -72,7 +74,16 @@ pub fn build_serve(_settings: &Settings, exe: &Path) -> AppServer {
         ManagedBy::Service,
     ));
     AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
+        .releases(release_source())
         .app_api(sapphire_sync_api::API_VERSION)
         .sync(Arc::clone(&runtime))
         .status_rows(sync::status_rows(runtime))
+}
+
+/// Where the app's releases are published: what `update` installs from, and where the
+/// server looks once a day for a newer one.
+fn release_source() -> ReleaseSource {
+    ReleaseSource::github("sapphire-turtle", "sapphire-sync")
+        .asset("sapphire-sync")
+        .cargo_crate("sapphire-sync")
 }
