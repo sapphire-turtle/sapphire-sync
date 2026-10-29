@@ -1,0 +1,38 @@
+[package]
+name = "sapphire-sync-server"
+# Released together with the editions that run it (release-plz.toml).
+version.workspace = true
+edition.workspace = true
+description = "sapphire-sync's app server: the one process per host that serves a workspace and syncs it through sapphire-bridge"
+license.workspace = true
+repository.workspace = true
+categories = ["filesystem"]
+keywords = ["sync", "p2p", "file-sync", "local-first"]
+
+[dependencies]
+sapphire-sync-core.workspace = true
+# The app's own API version, which the server reports.
+sapphire-sync-api.workspace = true
+# `block_in_place` in the status rows needs the multi-thread runtime.
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+serde_json.workspace = true
+# The e2e harness's bridge client, connected to each host's own bridge: the
+# facade does not re-export -bridge-client.
+sapphire-bridge-client.workspace = true
+# The e2e harness's bridge registrations (`GrainId`, the bridge's `ManagedBy`).
+sapphire-bridge-api.workspace = true
+# The e2e harness's `init_tracing` installs a warn-level subscriber so scenario
+# runs emit framework logs on failure only. The app's own logging is the
+# framework's business (`workspace::logging`), not this crate's.
+tracing-subscriber = { workspace = true }
+# The e2e harness builds real bridges: `LoopbackNetwork`, `NetConfig` and the
+# endpoint-taking constructors ride behind the bridge crate's `test-util`
+# feature (the facade does not expose it).
+sapphire-framework-bridge = { version = "0.22.0", features = ["test-util"] }
+# The harness parses and rewrites one device-record field (`introduce`'s
+# `~`-prefixed ledger copies).
+toml.workspace = true

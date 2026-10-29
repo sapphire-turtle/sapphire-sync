@@ -1,7 +1,7 @@
 //! Scenario ② — a conflict copy for a concurrent edit.
 //!
 //! Two complete hosts on one loopback network (the harness in `e2e/common/mod.rs`,
-//! included by path — the package is `[[bin]]`-only, so only top-level `tests/*.rs`
+//! included by path — only top-level `tests/*.rs`
 //! files are cargo-discovered and a nested `tests/e2e/` is not). The scenario:
 //! sync `notes/a.md` with identical content on both hosts, then write *different*
 //! content on A and on B. Nothing names a winner: whichever side's HLC sorts higher

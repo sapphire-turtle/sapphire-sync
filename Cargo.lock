@@ -4873,32 +4873,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "sapphire-sync"
-version = "0.14.1"
-dependencies = [
- "anyhow",
- "clap",
- "sapphire-framework-bridge",
- "sapphire-framework-bridge-api",
- "sapphire-framework-bridge-client",
- "sapphire-framework-ipc",
- "sapphire-framework-server",
- "sapphire-sync-api",
- "sapphire-sync-core",
- "serde_json",
- "tempfile",
- "tokio",
- "toml",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "sapphire-sync-api"
 version = "1.0.1"
 
 [[package]]
+name = "sapphire-sync-cli"
+version = "0.15.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "sapphire-framework-ipc",
+ "sapphire-framework-server",
+ "sapphire-sync-api",
+ "sapphire-sync-core",
+ "sapphire-sync-server",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "sapphire-sync-core"
-version = "0.14.1"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4913,9 +4909,41 @@ dependencies = [
 
 [[package]]
 name = "sapphire-sync-desktop"
-version = "0.14.1"
+version = "0.15.0"
 dependencies = [
+ "clap",
  "sapphire-framework",
+ "sapphire-sync-cli",
+]
+
+[[package]]
+name = "sapphire-sync-headless"
+version = "0.15.0"
+dependencies = [
+ "clap",
+ "sapphire-framework-ipc",
+ "sapphire-framework-server",
+ "sapphire-sync-api",
+ "sapphire-sync-cli",
+ "sapphire-sync-core",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "sapphire-sync-server"
+version = "0.15.0"
+dependencies = [
+ "sapphire-framework-bridge",
+ "sapphire-framework-bridge-api",
+ "sapphire-framework-bridge-client",
+ "sapphire-sync-api",
+ "sapphire-sync-core",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
+ "tracing-subscriber",
 ]
 
 [[package]]

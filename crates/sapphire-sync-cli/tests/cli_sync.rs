@@ -1,28 +1,14 @@
 //! The app's `sync` verb against a real in-process server: status rows and the
 //! disable round trip.
 //!
-//! One in-process host, the way `serve.rs` builds it but with the bridge
+//! One in-process host, the way the headless edition's `tests/serve.rs` builds it but with the bridge
 //! replaced by the server crate's `test-util` `StubBridge` (a stand-in over a
 //! `Connection::pair`: `BridgeClient::connect` would need a running daemon, and
 //! starting one is Task 4's e2e harness). The test drives the very pieces
-//! `server::build_serve()` wires — `SyncRuntime` mounted with
+//! `sapphire_sync_server::build_serve()` wires — `SyncRuntime` mounted with
 //! `AppServer::sync`, the app's rows mounted with `AppServer::status_rows` —
 //! and the app's own `sync::dispatch`, so the assertions cover the wiring, not
 //! a copy of it.
-//!
-//! The dispatch and row types are reached through `#[path]` includes of the
-//! same modules `main.rs` pulls in: a `[[bin]]`-only package has no library
-//! target, so the integration test compiles them into its own crate (the
-//! `cli_parse.rs` pattern).
-
-// The modules are compiled into this test crate directly (no lib target to
-// link against). `sync.rs` reaches `SyncCommand` through `crate::cli`, which
-// resolves to the include below in exactly the same way it resolves inside the
-// binary.
-#[path = "../src/cli.rs"]
-mod cli;
-#[path = "../src/sync.rs"]
-mod sync;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -30,6 +16,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use sapphire_framework_server::sync::testing::StubBridge;
 use sapphire_framework_server::{AppServer, StatusRow, SyncRuntime};
 use sapphire_ipc::{ManagedBy, probe};
+use sapphire_sync_cli::{cli, sync};
 use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::backend::protocol as proto;
 use sapphire_sync_core::framework::ipc::Endpoint;
@@ -147,7 +134,7 @@ async fn disable_unregisters_drops_the_row_and_reenables_with_the_same_id() {
     let root = workspace_root(tmp.path(), "notes");
 
     // The host: the real runtime over the stub bridge, mounted with the real
-    // status rows from the app's `sync` module — the `build_serve` wiring.
+    // status rows from the app's server — the `build_serve` wiring.
     let (stub, bridge_client) = StubBridge::start().await;
     let runtime = Arc::new(SyncRuntime::new(
         &CTX,
@@ -155,7 +142,7 @@ async fn disable_unregisters_drops_the_row_and_reenables_with_the_same_id() {
         std::env::current_exe().unwrap(),
         ManagedBy::Service,
     ));
-    let rows = sync::status_rows(Arc::clone(&runtime));
+    let rows = sapphire_sync_server::status_rows(Arc::clone(&runtime));
     let rows = Arc::clone(&rows) as Arc<dyn Fn() -> Vec<StatusRow> + Send + Sync>;
     let server = AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
         .app_api(sapphire_sync_api::API_VERSION)

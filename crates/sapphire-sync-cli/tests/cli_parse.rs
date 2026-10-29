@@ -1,19 +1,11 @@
 //! The whole command surface parses, and a bare invocation prints the help.
 //!
 //! Modelled on the framework's `command::tests` (the probes that pinned the
-//! same shapes for `FrameworkCommand` itself). These tests reach the binary's
-//! parse types through a `#[path]` include of the `cli.rs` module `main.rs`
-//! also pulls in — a `[[bin]]`-only package has no library target, so the
-//! integration test compiles the module into its own crate.
-
-// The module is compiled into this test crate directly (no lib target to
-// link against).
-#[path = "../src/cli.rs"]
-mod cli;
+//! same shapes for `FrameworkCommand` itself).
 
 use clap::Parser;
 
-use cli::{AppCommand, Cli, FrameworkCommand, SyncSubcommand};
+use sapphire_sync_cli::cli::{AppCommand, Cli, FrameworkCommand, SyncSubcommand};
 
 /// Parse `args` (after the binary name) and return the parsed `Cli`.
 fn parse(args: &[&str]) -> Cli {

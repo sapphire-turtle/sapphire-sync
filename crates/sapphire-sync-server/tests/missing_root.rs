@@ -1,7 +1,7 @@
 //! Scenario ③ — the missing-root guard.
 //!
 //! Two complete hosts on one loopback network (the harness in `e2e/common/mod.rs`,
-//! included by path — the package is `[[bin]]`-only, so only top-level `tests/*.rs`
+//! included by path — only top-level `tests/*.rs`
 //! files are cargo-discovered and a nested `tests/e2e/` is not). The scenario: take a
 //! synced workspace's root away from A, and check that sync *stops* rather than
 //! replicating the disappearance as a mass deletion.

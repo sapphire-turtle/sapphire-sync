@@ -1,7 +1,7 @@
 //! Scenario ① — pair and propagate.
 //!
 //! Two complete hosts on one loopback network (the harness in `e2e/common/mod.rs`,
-//! included by path — the package is `[[bin]]`-only, so only top-level `tests/*.rs`
+//! included by path — only top-level `tests/*.rs`
 //! files are discovered by cargo and a nested `tests/e2e/` is not). The scenario:
 //! enable sync on both hosts, then make one edit at a time and watch it cross the whole
 //! stack — client → app server → bridge → peer bridge → peer app server → files — with

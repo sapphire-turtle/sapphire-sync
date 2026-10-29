@@ -1,6 +1,10 @@
-//! The app's servers: bridge-less for one-shot verbs, sync-mounted for serve.
+//! sapphire-sync's app server: what `sapphire-sync serve` runs, in either
+//! edition. A library, not a binary of its own: the server is set up with the
+//! same `sapphire-sync` command that runs it (`sapphire-sync-cli`), so there is
+//! no separate server command to tell from the client's.
 //!
-//! Two builders, because the bridge connection belongs to the serve path only
+//! Two builders, bridge-less for one-shot verbs and sync-mounted for serve,
+//! because the bridge connection belongs to the serve path only
 //! (the review of `0acb194` ruled the one-shot verbs bridge-less):
 //!
 //! - [`build_oneshot`] hands every one-shot framework verb that needs a server
@@ -35,7 +39,13 @@ use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::ipc::ManagedBy;
 use sapphire_sync_core::framework::server::{AppServer, BridgeConnector, Settings, SyncRuntime};
 
-use crate::sync;
+mod status;
+
+pub use status::status_rows;
+
+/// The version the server reports, and the command line's clients name: the
+/// editions and this library share it (release-plz.toml).
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The app's server for one-shot verbs: an `AppServer` with nothing mounted.
 ///
@@ -47,7 +57,7 @@ use crate::sync;
 ///
 /// [`FrameworkCommand`]: sapphire_sync_core::framework::server::FrameworkCommand
 pub fn build_oneshot(_settings: &Settings) -> AppServer {
-    AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
+    AppServer::new(&CTX, VERSION)
 }
 
 /// The app's embedded server: sync runtime, `AppServer`.
@@ -67,12 +77,12 @@ pub fn build_oneshot(_settings: &Settings) -> AppServer {
 pub fn build_serve(_settings: &Settings, exe: &Path) -> AppServer {
     let runtime = Arc::new(SyncRuntime::connecting(
         &CTX,
-        BridgeConnector::standard(CTX.app_name, env!("CARGO_PKG_VERSION")),
+        BridgeConnector::standard(CTX.app_name, VERSION),
         exe.to_path_buf(),
         ManagedBy::Service,
     ));
-    AppServer::new(&CTX, env!("CARGO_PKG_VERSION"))
+    AppServer::new(&CTX, VERSION)
         .app_api(sapphire_sync_api::API_VERSION)
         .sync(Arc::clone(&runtime))
-        .status_rows(sync::status_rows(runtime))
+        .status_rows(status_rows(runtime))
 }

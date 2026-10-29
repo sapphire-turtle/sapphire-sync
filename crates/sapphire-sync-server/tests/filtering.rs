@@ -1,7 +1,7 @@
 //! Scenario ④ — filtering and the size limit.
 //!
 //! Two complete hosts on one loopback network (the harness in `e2e/common/mod.rs`,
-//! included by path — the package is `[[bin]]`-only, so only top-level `tests/*.rs`
+//! included by path — only top-level `tests/*.rs`
 //! files are cargo-discovered and a nested `tests/e2e/` is not). Three claims about what
 //! sync refuses to carry, each checked at the files:
 //!

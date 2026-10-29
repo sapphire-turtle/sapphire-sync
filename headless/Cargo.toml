@@ -1,0 +1,54 @@
+[package]
+# The edition without the GUI, for headless hosts. Its binary is `sapphire-sync`,
+# the one command both editions put on PATH; the desktop app is
+# `sapphire-sync-desktop`, and runs the same commands.
+name = "sapphire-sync-headless"
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+categories = ["command-line-utilities"]
+keywords = ["sync", "p2p", "file-sync", "local-first"]
+
+[[bin]]
+name = "sapphire-sync"
+path = "src/main.rs"
+
+[dependencies]
+sapphire-sync-cli.workspace = true
+clap.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+sapphire-sync-core.workspace = true
+sapphire-sync-api.workspace = true
+# The serve tests run a real server in-process with the server crate's
+# `StubBridge` (the in-process bridge stand-in over a `Connection::pair`) from
+# its `test-util` feature, and `probe` the endpoint while it starts, then run
+# this binary against it.
+sapphire-framework-server.workspace = true
+sapphire-ipc.workspace = true
+
+# `cargo binstall sapphire-sync-headless` downloads the release file instead of building it,
+# following sapphire-turtle/.github's README.md#conventions: the files are bare binaries named
+# `<crate>-<os>-<arch>` — `sapphire-sync-headless-…`, beside the desktop app's
+# `sapphire-sync-desktop-…` — so each release platform names its own; binstall installs it as
+# the `sapphire-sync` binary. quick-install is a third party's build: only this repository's
+# files, or a build from source, are installed.
+[package.metadata.binstall]
+pkg-fmt = "bin"
+disabled-strategies = ["quick-install"]
+
+[package.metadata.binstall.overrides.x86_64-unknown-linux-gnu]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-linux-x86_64"
+
+[package.metadata.binstall.overrides.aarch64-unknown-linux-gnu]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-linux-aarch64"
+
+[package.metadata.binstall.overrides.aarch64-apple-darwin]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-macos-aarch64"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-windows-x86_64.exe"

@@ -1,8 +1,8 @@
 [package]
 name = "sapphire-sync-desktop"
-# Versioned on its own, not with the app's crates: the GUI can change without
-# them, and they without it.
-version = "0.14.1"
+# Released together with `sapphire-sync-headless`, under its `v{version}` tags
+# (release-plz.toml).
+version.workspace = true
 edition.workspace = true
 description = "Desktop GUI for sapphire-sync"
 license-file = "LICENSE"
@@ -10,6 +10,10 @@ repository.workspace = true
 publish = false
 
 [dependencies]
+# Every command but the window — `serve`, `status`, `sync`, `workspace`, … —
+# runs the CLI's own code, so this one binary does all the CLI does.
+sapphire-sync-cli.workspace = true
+clap.workspace = true
 # `eframe`: `gui::app::run` starts the window, and `gui::{eframe, egui}` are the
 # versions it renders with.
 sapphire-framework = { version = "0.22.0", default-features = false, features = ["eframe"] }
@@ -17,20 +21,21 @@ sapphire-framework = { version = "0.22.0", default-features = false, features = 
 # `cargo binstall --git https://github.com/sapphire-turtle/sapphire-sync sapphire-sync-desktop`
 # downloads the release file instead of building it (this crate is not on crates.io), following
 # sapphire-turtle/.github's README.md#conventions: the files are bare binaries named
-# `<binary>-<os>-<arch>`, so each release platform names its own. quick-install is a third
-# party's build: only this repository's files, or a build from source, are installed.
+# `<crate>-<os>-<arch>`, beside the headless edition's under the shared `v{version}` tag, so
+# each release platform names its own. quick-install is a third party's build: only this
+# repository's files, or a build from source, are installed.
 [package.metadata.binstall]
 pkg-fmt = "bin"
 disabled-strategies = ["quick-install"]
 
 [package.metadata.binstall.overrides.x86_64-unknown-linux-gnu]
-pkg-url = "{ repo }/releases/download/desktop-v{ version }/{ name }-linux-x86_64"
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-linux-x86_64"
 
 [package.metadata.binstall.overrides.aarch64-unknown-linux-gnu]
-pkg-url = "{ repo }/releases/download/desktop-v{ version }/{ name }-linux-aarch64"
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-linux-aarch64"
 
 [package.metadata.binstall.overrides.aarch64-apple-darwin]
-pkg-url = "{ repo }/releases/download/desktop-v{ version }/{ name }-macos-aarch64"
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-macos-aarch64"
 
 [package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
-pkg-url = "{ repo }/releases/download/desktop-v{ version }/{ name }-windows-x86_64.exe"
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-windows-x86_64.exe"

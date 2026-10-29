@@ -13,6 +13,20 @@ bare invocation prints the help.
 
 ## Install
 
+Install **one** of the two editions. Both put the same command, `sapphire-sync`, on
+PATH: the desktop app's binary also runs every command of the headless one (`serve`,
+`status`, `sync`, `workspace`, …), so it is a superset of it.
+
+| Edition | For | How |
+|---|---|---|
+| Desktop app (`sapphire-sync-desktop`) | Everyday use, with the GUI | Installer for Windows, macOS and Linux (in preparation) |
+| Headless (`sapphire-sync-headless`) | Hosts and servers without a GUI | Install script, cargo-binstall or cargo |
+
+Installing both leaves two `sapphire-sync` commands; `sapphire-sync status` warns
+when the one on PATH is not the one you ran.
+
+### Headless: install script
+
 ```sh
 # Linux, macOS
 curl -fsSL https://raw.githubusercontent.com/sapphire-turtle/sapphire-framework/main/install/install.sh | sh -s -- sync
@@ -24,18 +38,20 @@ curl -fsSL https://raw.githubusercontent.com/sapphire-turtle/sapphire-framework/
 ```
 
 This installs `sapphire-sync` together with `sapphire-bridge`, which it syncs
-through, into `~/.local/bin`. Add `sync-desktop` for the desktop app. See the
+through, into `~/.local/bin`. See the
 [install script's README](https://github.com/sapphire-turtle/sapphire-framework/tree/main/install)
 for the options.
 
-Or with [cargo-binstall](https://github.com/cargo-bins/cargo-binstall), which downloads the
-same release files into `~/.cargo/bin` rather than building them:
+### Headless: cargo-binstall or cargo
 
 ```sh
-cargo binstall sapphire-sync
-# The desktop app is not on crates.io
-cargo binstall --git https://github.com/sapphire-turtle/sapphire-sync sapphire-sync-desktop
+cargo binstall sapphire-sync-headless
+# or build it
+cargo install sapphire-sync-headless
 ```
+
+Either installs the `sapphire-sync` binary. (0.13 to 0.14 were published as the
+`sapphire-sync` crate.)
 
 ## Quick start
 
@@ -52,7 +68,9 @@ unchanged.
 
 ## How the pieces fit
 
-This repository ships one binary: the app server plus the CLI. The always-on
+This repository ships one command, `sapphire-sync`, in two editions — the
+headless one and the desktop app, which runs the same commands: the app server
+plus the CLI. The always-on
 peer it talks to is the `sapphire-bridge` app; run exactly one
 `sapphire-sync serve` per host. The server serves one workspace at a time
 (`workspace select` switches it); the `SyncRuntime` mounts its replica and
@@ -87,11 +105,11 @@ One-shot verbs never start the daemon. When no server is listening they print
 
 ## Desktop app
 
-`sapphire-sync-desktop` is a GUI client of the installed services: it shows the
-framework's sync panel and never runs a server or bridge itself, so closing the
-window does not stop sync. Install it beside `sapphire-sync` and
-`sapphire-bridge` (`sh -s -- sync sync-desktop` above), so its "Install & start
-service" buttons can find them.
+`sapphire-sync-desktop` is the desktop edition. Its binary is also the CLI: run
+bare it opens the window, and with a subcommand (`serve`, `status`, `sync`, …) it
+does what `sapphire-sync` does. The window is a GUI client of the installed
+services: it shows the framework's sync panel and never runs a server or bridge
+itself, so closing the window does not stop sync.
 
 On Windows it renders with Vulkan, because the DX12 device is lost whenever a
 Remote Desktop session reconnects; elsewhere wgpu picks its usual backend. Set
@@ -110,9 +128,15 @@ This repository contains components under different licenses:
 
 | Component | License |
 |-----------|---------|
-| `sapphire-sync` (`cli/`) | MIT OR Apache-2.0 |
+| `sapphire-sync-headless` (`headless/`) | MIT OR Apache-2.0 |
+| `sapphire-sync-cli` | MIT OR Apache-2.0 |
+| `sapphire-sync-server` | MIT OR Apache-2.0 |
 | `sapphire-sync-core` | MIT OR Apache-2.0 |
 | `sapphire-sync-api` | MIT OR Apache-2.0 |
 | `sapphire-sync-desktop` | GPL-3.0-or-later, with [App Store marketplace exception](desktop/LICENSE.App-Store-Exception) |
+
+The desktop app's binary includes the MIT/Apache-2.0 code of the command line and the
+server, so the binary as a whole is distributed under GPL-3.0-or-later (with the same
+exception).
 
 See the `LICENSE` (or `LICENSE-MIT` / `LICENSE-APACHE`) file in each component's directory for the full license text.
