@@ -24,8 +24,8 @@ crate of its own.
 
 ## CI
 
-`.github/workflows/ci.yml` calls sapphire-framework's shared Rust CI
-([ci/README.md](https://github.com/sapphire-turtle/sapphire-framework/blob/main/ci/README.md)):
+`.github/workflows/ci.yml` calls the organization's shared Rust CI
+([sapphire-turtle/.github](https://github.com/sapphire-turtle/.github/blob/main/README.md)):
 `cargo fmt --check`, then `cargo clippy -D warnings` and `cargo test --locked`
 over every crate but the desktop app, on Linux x86_64 (`ci / test`) and on Linux
 aarch64, macOS and Windows (`ci / test-platforms`). On Linux x86_64 it then runs
