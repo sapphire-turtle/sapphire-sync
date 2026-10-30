@@ -24,7 +24,7 @@ edition = "2024"
 anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive", "env"] }
-grain-id = { version = "0.16", features = ["serde"] }
+grain-id = { version = "0.17", features = ["serde"] }
 # The framework facade. A sync app needs the server/sync stack plus the bridge
 # module (Task 4's e2e harness runs real bridges through it). `retrieve` comes
 # in through `workspace` regardless, but only its full-text half: the
