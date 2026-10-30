@@ -3,10 +3,11 @@
 //! same commands.
 
 use clap::Parser as _;
+use sapphire_sync_cli::Edition;
 use sapphire_sync_cli::cli::Cli;
 
 fn main() {
-    if let Err(err) = sapphire_sync_cli::run(Cli::parse().app) {
+    if let Err(err) = sapphire_sync_cli::run(Cli::parse().app, Edition::Headless) {
         sapphire_sync_cli::exit_with(err);
     }
 }

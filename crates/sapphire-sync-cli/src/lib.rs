@@ -20,13 +20,15 @@ use sapphire_sync_core::framework::server::FrameworkCommand;
 use sapphire_sync_core::framework::workspace::AppKind;
 use sapphire_sync_server as server;
 
+pub use sapphire_sync_server::Edition;
+
 use crate::cli::AppCommand;
 
-/// Run one command, exiting the process with its code.
+/// Run one command as `edition`, exiting the process with its code.
 ///
 /// An error is returned for the caller to print with [`exit_with`], in the
 /// app's own `sapphire-sync: {err}` shape.
-pub fn run(command: AppCommand) -> anyhow::Result<()> {
+pub fn run(command: AppCommand, edition: Edition) -> anyhow::Result<()> {
     // First statement after parsing: what this process is decides where its
     // state lives (and the secrets migration it runs). `serve` is the server;
     // every other verb is a one-shot CLI.
@@ -38,7 +40,7 @@ pub fn run(command: AppCommand) -> anyhow::Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
-    runtime.block_on(dispatch(command))
+    runtime.block_on(dispatch(command, edition))
 }
 
 /// Print `err` the app's way — the program name, the message (Display, not the
@@ -49,7 +51,7 @@ pub fn exit_with(err: anyhow::Error) -> ! {
     std::process::exit(1);
 }
 
-async fn dispatch(command: AppCommand) -> anyhow::Result<()> {
+async fn dispatch(command: AppCommand, edition: Edition) -> anyhow::Result<()> {
     match command {
         // The app's own verbs come first.
         AppCommand::Sync(command) => {
@@ -66,7 +68,7 @@ async fn dispatch(command: AppCommand) -> anyhow::Result<()> {
                 .dispatch(
                     &CTX,
                     (),
-                    |settings| server::build_serve(settings, &exe),
+                    |settings| server::build_serve(settings, &exe, edition),
                     server::VERSION,
                 )
                 .await?;
@@ -75,9 +77,9 @@ async fn dispatch(command: AppCommand) -> anyhow::Result<()> {
         // Warned first: the exit code is the report's.
         AppCommand::Framework(FrameworkCommand::Status) => {
             warn_if_shadowed();
-            oneshot(FrameworkCommand::Status).await
+            oneshot(FrameworkCommand::Status, edition).await
         }
-        AppCommand::Framework(command) => oneshot(command).await,
+        AppCommand::Framework(command) => oneshot(command, edition).await,
     }
 }
 
@@ -85,9 +87,14 @@ async fn dispatch(command: AppCommand) -> anyhow::Result<()> {
 /// server — `status` on a host without a running server must say the
 /// framework's "no … server is running", not a bridge error — and the exit
 /// code is the process's. The app has no settings of its own (`()`).
-async fn oneshot(command: FrameworkCommand) -> anyhow::Result<()> {
+async fn oneshot(command: FrameworkCommand, edition: Edition) -> anyhow::Result<()> {
     let code = command
-        .dispatch(&CTX, (), server::build_oneshot, server::VERSION)
+        .dispatch(
+            &CTX,
+            (),
+            |settings| server::build_oneshot(settings, edition),
+            server::VERSION,
+        )
         .await?;
     std::process::exit(code);
 }

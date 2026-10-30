@@ -74,7 +74,8 @@ struct DesktopCli {
 
 fn main() -> eframe::Result<()> {
     match DesktopCli::parse().command {
-        Some(command) => match sapphire_sync_cli::run(command) {
+        Some(command) => match sapphire_sync_cli::run(command, sapphire_sync_cli::Edition::Desktop)
+        {
             Ok(()) => Ok(()),
             Err(err) => sapphire_sync_cli::exit_with(err),
         },
