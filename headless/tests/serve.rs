@@ -6,7 +6,7 @@
 //! binary* — `env!("CARGO_BIN_EXE_sapphire-sync")` — so the subprocess's
 //! stdout and stderr are captured exactly as a user sees them, error format
 //! included. The server itself is the in-process `AppServer::run()` of the
-//! same pieces `server::build_serve()` wires — `SyncRuntime::new(&CTX,
+//! same pieces `sapphire_sync_server::build_serve()` wires — `SyncRuntime::new(&CTX,
 //! bridge, exe, ManagedBy::Service)` into `AppServer::new(&CTX,
 //! VERSION).sync(..)` — except the bridge, which is the `test-util`
 //! `StubBridge` (an in-process stand-in: `BridgeClient::connect` needs a

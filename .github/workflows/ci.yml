@@ -21,7 +21,7 @@ jobs:
       # packages") when the crate is absent — the very case that should pass.
       # Default features only, so an opt-in feature may still enable it.
       post-test: |
-        out=$(cargo tree -p sapphire-sync --locked --prefix none --format '{p}' \
+        out=$(cargo tree -p sapphire-sync-headless --locked --prefix none --format '{p}' \
           | grep -E '^(fastembed|ort|ort-sys) v' | sort -u || true)
         if [ -n "$out" ]; then
           echo "::error::the embedding stack leaked into the default graph:"

@@ -1,22 +1,16 @@
-//! CLI-shell types: the command line of the one binary this app ships.
-//!
-//! A `[[bin]]`-only package has no library target for an integration test to
-//! link, so the clap types live in this module and `main.rs` pulls it in with
-//! `#[path]`; each test includes it the same way. The module is compiled
-//! unconditionally (not behind `cfg(test)`): the tests must be able to include
-//! it, and a module of plain clap-type definitions adds nothing to the shipped
-//! binary to hide.
+//! CLI-shell types: the command line both editions run.
 
 use clap::{Parser, Subcommand};
 
 // The framework's command enum, re-exported so the tests' `use cli::…` reads
-// the same surface `main.rs` sees through `sapphire_sync_core`.
+// the same surface `run` sees through `sapphire_sync_core`.
 pub use sapphire_sync_core::framework::server::FrameworkCommand;
 
-/// The command line of the one binary this app ships.
+/// The command line of the headless edition's `sapphire-sync` binary.
 ///
 /// A bare invocation prints the help; the service manager starts the binary
-/// with `serve`.
+/// with `serve`. The desktop app parses the same [`AppCommand`], with a bare
+/// invocation opening its window instead.
 #[derive(Parser)]
 #[command(
     name = "sapphire-sync",

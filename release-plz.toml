@@ -1,8 +1,9 @@
 [workspace]
-# The app's crates (`sapphire-sync`, `-core`) move together in version_group
-# "app", on `workspace.package.version`. Only the CLI makes the `v{version}` tag
-# and GitHub release. The desktop app and the API crate are versioned on their
-# own (below).
+# The two editions — the headless one and the desktop app — and the app's
+# libraries (`sapphire-sync-cli`, `-server`, `-core`) share one version, on
+# `workspace.package.version`, in version_group "app". Only the headless edition
+# makes the `v{version}` tag and GitHub release. The API crate is versioned on
+# its own (below).
 changelog_update = true
 dependencies_update = true
 publish = true
@@ -15,34 +16,45 @@ release_always = false
 pr_branch_prefix = "release-plz/"
 pr_labels = ["release"]
 
-# The CLI and the server binary. The crates.io name was the old git sync library
-# from sapphire-workspace (0.12.1), so this app starts at 0.13.0.
+# The headless edition: the `sapphire-sync` binary without the GUI. A new crate
+# at 0.15.0; 0.13.0 to 0.14.1 were published as `sapphire-sync`, whose crates.io
+# name was the old git sync library from sapphire-workspace (0.12.1) before that.
 [[package]]
-name = "sapphire-sync"
+name = "sapphire-sync-headless"
+version_group = "app"
 git_tag_enable = true
 git_release_enable = true
 git_tag_name = "v{{ version }}"
 git_release_name = "v{{ version }}"
+
+# The command line both editions run, and the app server it starts. They move
+# with the editions: nothing outside this workspace builds on them.
+[[package]]
+name = "sapphire-sync-cli"
+version_group = "app"
+
+[[package]]
+name = "sapphire-sync-server"
 version_group = "app"
 
 [[package]]
 name = "sapphire-sync-core"
 version_group = "app"
 
-# GitHub-release-only binary crate, versioned on its own: a GUI-only change
-# releases the desktop app alone. It is not published, so its versions live in
-# its git tags; `git_only = true` is load-bearing: release-plz silently skips a
-# crate whose Cargo.toml has `publish = false` unless it is set (`release = true`
-# alone no longer does it).
+# The desktop app, which runs the CLI too. It is not published, so its versions
+# live in the shared `v{version}` tags the headless edition makes;
+# `git_only = true` is load-bearing: release-plz silently skips a crate whose Cargo.toml has
+# `publish = false` unless it is set (`release = true` alone no longer does it).
 [[package]]
 name = "sapphire-sync-desktop"
+version_group = "app"
 git_only = true
 # Overrides the workspace's `publish = true`, which `git_only` refuses.
 publish = false
-git_tag_enable = true
-git_release_enable = true
-git_tag_name = "desktop-v{{ version }}"
-git_release_name = "desktop-v{{ version }}"
+# The tag its version is read from; the headless edition makes it.
+git_tag_name = "v{{ version }}"
+git_tag_enable = false
+git_release_enable = false
 
 # The server's own API carries its own version: its major is the handshake's
 # `app_api` (`API_VERSION`, derived in src/lib.rs), so it must not move with

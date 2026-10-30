@@ -1,0 +1,30 @@
+[package]
+name = "sapphire-sync-cli"
+# Released together with the two editions that run it, `sapphire-sync-headless`
+# and `sapphire-sync-desktop` (release-plz.toml).
+version.workspace = true
+edition.workspace = true
+description = "The command line of sapphire-sync's two editions, the headless one and the desktop app: its commands, the framework's and its own, which run the app server or call it"
+license.workspace = true
+repository.workspace = true
+categories = ["command-line-utilities"]
+keywords = ["sync", "p2p", "file-sync", "local-first"]
+
+[dependencies]
+sapphire-sync-core.workspace = true
+# The app's own API version, which `sync disable` names.
+sapphire-sync-api.workspace = true
+sapphire-sync-server.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+# The sync tests take the server crate's `StubBridge` (the in-process bridge
+# stand-in over a `Connection::pair`) from its `test-util` feature, and `probe`
+# the endpoint while a server starts. `Endpoint` itself comes through the
+# facade's `ipc` module, like the CLI's own code.
+sapphire-framework-server.workspace = true
+sapphire-ipc.workspace = true

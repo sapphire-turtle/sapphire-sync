@@ -7,20 +7,29 @@ Link, don't copy.
 
 ## Repository layout
 
-Two crates, one published binary:
+Two editions, each one binary, over the same libraries:
 
-- `cli/` — the `sapphire-sync` binary: a thin clap shell plus the app's own
-  `sync` verb. Everything the framework provides stays the framework's; this
-  repository re-exports, never re-implements.
+- `headless/` — `sapphire-sync-headless`, the `sapphire-sync` binary without
+  the GUI: a `main` that runs `sapphire-sync-cli`.
+- `desktop/` — `sapphire-sync-desktop`, the GUI, which runs the same commands
+  when given one.
+- `crates/sapphire-sync-cli/` — the command line both editions run: a thin
+  clap shell plus the app's own `sync` verb. Everything the framework provides
+  stays the framework's; this repository re-exports, never re-implements.
+- `crates/sapphire-sync-server/` — the app server `serve` runs, and the status
+  rows it reports.
 - `crates/sapphire-sync-core/` — the core crate: the `CTX` static and the
-  framework re-export. Keep it thin; it exists so the binary has something of
+  framework re-export. Keep it thin; it exists so the app has something of
   its own to depend on.
 
 ## Tests
 
-Tests live in `cli/tests/`. Top-level `tests/*.rs` files are separate test
-crates; `cli/tests/e2e/common/` is a shared harness included by path, not a
-crate of its own.
+Each crate's tests live in its own `tests/`: the command line's parse and
+`sync` tests in `crates/sapphire-sync-cli/tests/`, the two-host sync scenarios
+in `crates/sapphire-sync-server/tests/`, and the tests that run the real
+`sapphire-sync` binary in `headless/tests/`. Top-level `tests/*.rs` files are
+separate test crates; `crates/sapphire-sync-server/tests/e2e/common/` is a
+shared harness included by path, not a crate of its own.
 
 ## CI
 
@@ -29,7 +38,7 @@ crate of its own.
 `cargo fmt --check`, then `cargo clippy -D warnings` and `cargo test --locked`
 over every crate but the desktop app, on Linux x86_64 (`ci / test`) and on Linux
 aarch64, macOS and Windows (`ci / test-platforms`). On Linux x86_64 it then runs
-a dependency guard — the default build's `cargo tree -p sapphire-sync` must not
+a dependency guard — the default build's `cargo tree -p sapphire-sync-headless` must not
 contain `fastembed`, `ort` or `ort-sys` (the embedding stack, the heavy part of
 search). `sapphire-framework-retrieve` itself is expected: the framework's
 workspace layer depends on it in every app, and without `fastembed-embed` it

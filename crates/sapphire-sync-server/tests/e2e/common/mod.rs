@@ -7,7 +7,7 @@
 //! framework's own `sapphire-framework-server/tests/common/mod.rs` — the same structure
 //! and the same polling discipline (deadlines and conditions, never a blind sleep) —
 //! but with this application's pieces: sapphire-sync's own [`CTX`], the app's marker
-//! name, and the wiring `crate::server::build_serve` builds for one host, twice.
+//! name, and the wiring `sapphire_sync_server::build_serve` builds for one host, twice.
 //!
 //! Everything is in this process rather than spawned. A spawned app server finds its
 //! bridge through `SAPPHIRE_RUNTIME_DIR`, and that is one variable in one environment:
@@ -179,7 +179,7 @@ pub async fn start_host(net: &LoopbackNetwork, node_id: &str, device_name: &str)
             .expect("the bridge is listening"),
     );
 
-    // The app server, with sync wired the way `crate::server::build_serve` wires it.
+    // The app server, with sync wired the way `sapphire_sync_server::build_serve` wires it.
     let endpoint = Endpoint::in_dir(ctx.app_name, runtime_dir.clone());
     let runtime = Arc::new(SyncRuntime::new(
         ctx,

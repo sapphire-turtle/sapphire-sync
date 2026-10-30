@@ -12,6 +12,19 @@ sapphire-sync は [sapphire-framework](https://github.com/sapphire-turtle/sapphi
 
 ## インストール
 
+2つの版の**どちらか1つ**を入れてください。どちらも PATH に同じコマンド `sapphire-sync` を置きます。
+デスクトップ版のバイナリはヘッドレス版のコマンド（`serve`・`status`・`sync`・`workspace` など）もすべて実行できるので、ヘッドレス版の上位互換です。
+
+| 版 | 用途 | 入れ方 |
+|---|---|---|
+| デスクトップ版（`sapphire-sync-desktop`） | GUI を使うふだんの利用 | Windows・macOS・Linux のインストーラー（準備中） |
+| ヘッドレス版（`sapphire-sync-headless`） | GUI のないホストやサーバー | インストールスクリプト、cargo-binstall、cargo |
+
+両方を入れると `sapphire-sync` が2つになります。PATH 上のものが実行したものと違うときは、
+`sapphire-sync status` が警告します。
+
+### ヘッドレス版：インストールスクリプト
+
 ```sh
 # Linux, macOS
 curl -fsSL https://raw.githubusercontent.com/sapphire-turtle/sapphire-framework/main/install/install.sh | sh -s -- sync
@@ -22,19 +35,19 @@ curl -fsSL https://raw.githubusercontent.com/sapphire-turtle/sapphire-framework/
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/sapphire-turtle/sapphire-framework/main/install/install.ps1))) sync
 ```
 
-`sapphire-sync` と、同期に使う `sapphire-bridge` が一緒に `~/.local/bin` へ入ります。
-デスクトップアプリも入れるには `sync-desktop` を足してください。オプションは
+`sapphire-sync` と、同期に使う `sapphire-bridge` が一緒に `~/.local/bin` へ入ります。オプションは
 [インストールスクリプトの README](https://github.com/sapphire-turtle/sapphire-framework/tree/main/install)
 を参照してください。
 
-[cargo-binstall](https://github.com/cargo-bins/cargo-binstall) でも入れられます。同じリリースファイルを
-ビルドせずに `~/.cargo/bin` へダウンロードします。
+### ヘッドレス版：cargo-binstall か cargo
 
 ```sh
-cargo binstall sapphire-sync
-# デスクトップアプリは crates.io にない
-cargo binstall --git https://github.com/sapphire-turtle/sapphire-sync sapphire-sync-desktop
+cargo binstall sapphire-sync-headless
+# またはビルドする
+cargo install sapphire-sync-headless
 ```
+
+どちらも `sapphire-sync` バイナリを入れます（0.13 から 0.14 は `sapphire-sync` という crate 名で公開していました）。
 
 ## クイックスタート
 
@@ -51,7 +64,7 @@ $ sapphire-sync workspace show      # このホストのワークスペースと
 
 ## 部品のつながり
 
-このリポジトリはひとつのバイナリを出します。アプリサーバー兼 CLI です。常時稼働のピアは
+このリポジトリはひとつのコマンド `sapphire-sync` を、ヘッドレス版と、同じコマンドを実行できるデスクトップ版の2つの版で出します。アプリサーバー兼 CLI です。常時稼働のピアは
 `sapphire-bridge` アプリで、ホストごとに `sapphire-sync serve` をちょうどひとつ動かします。
 サーバーが扱うワークスペースは一度にひとつ（`workspace select` で切り替え）で、
 `SyncRuntime` はそのレプリカを持ち、ブリッジに登録します。レプリケーションエンジンそのものはアプリではなくフレームワークの実装です。
@@ -83,11 +96,11 @@ $ sapphire-sync workspace show      # このホストのワークスペースと
 
 ## デスクトップアプリ
 
-`sapphire-sync-desktop` は、インストール済みサービスの GUI クライアントです。
-フレームワークの同期パネルを表示するだけで、サーバーもブリッジも自分では
-起動しません。ウィンドウを閉じても同期は止まりません。
-「Install & start service」ボタンが見つけられるよう、`sapphire-sync` と
-`sapphire-bridge` と同じ場所に入れてください（上の `sh -s -- sync sync-desktop`）。
+`sapphire-sync-desktop` はデスクトップ版です。そのバイナリは CLI も兼ねます。
+引数なしで起動するとウィンドウを開き、サブコマンド（`serve`・`status`・`sync` など）を
+付けると `sapphire-sync` と同じ処理をします。ウィンドウはインストール済みサービスの
+GUI クライアントです。フレームワークの同期パネルを表示するだけで、サーバーもブリッジも
+自分では起動しません。ウィンドウを閉じても同期は止まりません。
 
 Windows では Vulkan で描画します。DX12 のデバイスはリモートデスクトップの
 再接続のたびに失われるためです。それ以外の OS では wgpu の通常の選択に
@@ -107,9 +120,13 @@ Windows では Vulkan で描画します。DX12 のデバイスはリモート�
 
 | コンポーネント | ライセンス |
 |-----------|---------|
-| `sapphire-sync`（`cli/`） | MIT OR Apache-2.0 |
+| `sapphire-sync-headless`（`headless/`） | MIT OR Apache-2.0 |
+| `sapphire-sync-cli` | MIT OR Apache-2.0 |
+| `sapphire-sync-server` | MIT OR Apache-2.0 |
 | `sapphire-sync-core` | MIT OR Apache-2.0 |
 | `sapphire-sync-api` | MIT OR Apache-2.0 |
 | `sapphire-sync-desktop` | GPL-3.0-or-later、[App Storeマーケットプレイス例外](desktop/LICENSE.App-Store-Exception)付き |
+
+デスクトップ版のバイナリはコマンドラインとサーバーの MIT / Apache-2.0 のコードを含むため、バイナリ全体は GPL-3.0-or-later（同じ例外付き）で配布されます。
 
 各コンポーネントのディレクトリにある`LICENSE`（または`LICENSE-MIT` / `LICENSE-APACHE`）ファイルに完全なライセンス文書があります。

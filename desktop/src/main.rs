@@ -1,13 +1,21 @@
-//! sapphire-sync's desktop app: the framework's shell, with its Settings.
+//! sapphire-sync's desktop app: the framework's shell, with its Settings — and,
+//! given a subcommand, the CLI.
 //!
-//! A pure client: it talks to the service-managed `sapphire-sync serve` and
+//! This one binary is a superset of the CLI's: bare, it opens the window; with
+//! `serve`, `status`, `sync`, `workspace`, … it runs the CLI's own code
+//! (`sapphire_sync_cli::run`), so the service manager can start it as it starts
+//! `sapphire-sync`.
+//!
+//! The window is a pure client: it talks to the service-managed `sapphire-sync serve` and
 //! `sapphire-bridge` over IPC and never starts either itself. Closing the window does not
 //! stop sync. The Files screen is a placeholder for the synced folder's browser (the
 //! mobile app needs one); until then Settings, at the rail's foot, is what the app does.
 
+use clap::Parser;
 use sapphire_framework::gui::app::{AppOptions, AppSetup};
 use sapphire_framework::gui::client::AppIdentity;
 use sapphire_framework::gui::{Destination, Settings, Shell, eframe, egui, i18n, tr};
+use sapphire_sync_cli::cli::AppCommand;
 
 const APP: AppIdentity = AppIdentity {
     app_name: "sapphire-sync",
@@ -52,7 +60,29 @@ fn files_ui(ui: &mut egui::Ui) {
     });
 }
 
+/// The CLI's command line, with the subcommand optional: none opens the window.
+#[derive(Parser)]
+#[command(
+    name = "sapphire-sync",
+    about = "P2P file sync over sapphire-framework: the desktop app, or the CLI's commands",
+    version
+)]
+struct DesktopCli {
+    #[command(subcommand)]
+    command: Option<AppCommand>,
+}
+
 fn main() -> eframe::Result<()> {
+    match DesktopCli::parse().command {
+        Some(command) => match sapphire_sync_cli::run(command) {
+            Ok(()) => Ok(()),
+            Err(err) => sapphire_sync_cli::exit_with(err),
+        },
+        None => window(),
+    }
+}
+
+fn window() -> eframe::Result<()> {
     sapphire_framework::gui::app::run(
         AppOptions::new(APP, "Sapphire Sync").min_inner_size([640.0, 420.0]),
         |setup: AppSetup<'_>| {
