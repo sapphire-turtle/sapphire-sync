@@ -2082,6 +2082,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "grain-id"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e76a93cea412cba134bf74683ba296d2505b67db519d869e9f2b0fc17e08d636"
+dependencies = [
+ "rand 0.10.3",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "guillotiere"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4565,7 +4576,7 @@ checksum = "71aef0ee43306e4705153446ec274f3ce6c46465183ad8edb6cc50034b16f030"
 dependencies = [
  "async-trait",
  "chrono",
- "grain-id",
+ "grain-id 0.16.0",
  "indexmap",
  "sapphire-framework-ipc",
  "sapphire-framework-server-api",
@@ -4589,7 +4600,7 @@ dependencies = [
  "corundum-framework-platform",
  "data-encoding",
  "getrandom 0.4.3",
- "grain-id",
+ "grain-id 0.16.0",
  "libc",
  "notify",
  "postcard",
@@ -4624,7 +4635,7 @@ checksum = "1560b2639487f8a547fbf196d2e880b5b32776deca9ac6818500fed65ea8284b"
 dependencies = [
  "base64 0.23.1",
  "clap",
- "grain-id",
+ "grain-id 0.16.0",
  "rpassword",
  "serde",
  "serde_json",
@@ -4653,7 +4664,7 @@ dependencies = [
  "corundum-framework-gui",
  "eframe",
  "egui",
- "grain-id",
+ "grain-id 0.16.0",
  "rfd",
  "sapphire-framework-backend",
  "sapphire-framework-bridge-api",
@@ -4691,7 +4702,7 @@ dependencies = [
  "base64 0.23.1",
  "chrono",
  "getrandom 0.4.3",
- "grain-id",
+ "grain-id 0.16.0",
  "serde",
  "sha2",
  "thiserror 2.0.21",
@@ -4720,7 +4731,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54374b58b938ad031efd2e62eed7295a45c6fffd8c15e61de6de8e9b5b5c6a1e"
 dependencies = [
  "clap",
- "grain-id",
+ "grain-id 0.16.0",
  "indexmap",
  "metrics",
  "notify",
@@ -4750,7 +4761,7 @@ version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "374127be49220d1875235982be7297bb4958fae62e7f20eada6e4e909eeef071"
 dependencies = [
- "grain-id",
+ "grain-id 0.16.0",
  "sapphire-framework-bridge-api",
  "serde",
 ]
@@ -4774,7 +4785,7 @@ version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4ab7647a663bf62432ba88ad2b480214c641354b5e10b5ffffdb3b97d46f5c5"
 dependencies = [
- "grain-id",
+ "grain-id 0.16.0",
  "sapphire-framework-sync",
  "serde",
  "serde_json",
@@ -4802,7 +4813,7 @@ version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52834dca78b5970eaba6ba3b9a8448fd9541539d78fd0d63f32fea5efb0cd3f2"
 dependencies = [
- "grain-id",
+ "grain-id 0.16.0",
  "ignore",
  "redb",
  "serde",
@@ -4898,7 +4909,7 @@ version = "0.15.0"
 dependencies = [
  "anyhow",
  "chrono",
- "grain-id",
+ "grain-id 0.17.0",
  "sapphire-framework",
  "serde",
  "tempfile",
