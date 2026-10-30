@@ -37,7 +37,9 @@ use std::sync::Arc;
 
 use sapphire_sync_core::CTX;
 use sapphire_sync_core::framework::ipc::ManagedBy;
-use sapphire_sync_core::framework::server::{AppServer, BridgeConnector, Settings, SyncRuntime};
+use sapphire_sync_core::framework::server::{
+    AppServer, BridgeConnector, ReleaseSource, Settings, SyncRuntime,
+};
 
 mod status;
 
@@ -46,6 +48,32 @@ pub use status::status_rows;
 /// The version the server reports, and the command line's clients name: the
 /// editions and this library share it (release-plz.toml).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Which edition runs the server: the release file `update` installs is the
+/// edition's own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Edition {
+    /// `sapphire-sync-headless`, the command line alone.
+    Headless,
+    /// `sapphire-sync-desktop`, the desktop app.
+    Desktop,
+}
+
+impl Edition {
+    /// Where the edition's releases are published: what `update` installs
+    /// from, and where the server looks once a day for a newer one. Both are
+    /// in the shared `v{version}` release (release-binaries.yml), as
+    /// `<crate>-<os>-<arch>`; only the headless edition is on crates.io.
+    pub fn releases(self) -> ReleaseSource {
+        let source = ReleaseSource::github("sapphire-turtle", "sapphire-sync");
+        match self {
+            Edition::Headless => source
+                .asset("sapphire-sync-headless")
+                .cargo_crate("sapphire-sync-headless"),
+            Edition::Desktop => source.asset("sapphire-sync-desktop"),
+        }
+    }
+}
 
 /// The app's server for one-shot verbs: an `AppServer` with nothing mounted.
 ///
@@ -56,8 +84,8 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// so `_settings` holds the framework's alone and nothing here reads them.
 ///
 /// [`FrameworkCommand`]: sapphire_sync_core::framework::server::FrameworkCommand
-pub fn build_oneshot(_settings: &Settings) -> AppServer {
-    AppServer::new(&CTX, VERSION)
+pub fn build_oneshot(_settings: &Settings, edition: Edition) -> AppServer {
+    AppServer::new(&CTX, VERSION).releases(edition.releases())
 }
 
 /// The app's embedded server: sync runtime, `AppServer`.
@@ -73,8 +101,8 @@ pub fn build_oneshot(_settings: &Settings) -> AppServer {
 ///
 /// A new runtime per call: the framework's `serve_restarting` builds a server
 /// per round, and a server stops the runtime it was given when it stops. `exe`
-/// is this executable, looked up once by the caller.
-pub fn build_serve(_settings: &Settings, exe: &Path) -> AppServer {
+/// is this executable, looked up once by the caller; `edition` the one it is.
+pub fn build_serve(_settings: &Settings, exe: &Path, edition: Edition) -> AppServer {
     let runtime = Arc::new(SyncRuntime::connecting(
         &CTX,
         BridgeConnector::standard(CTX.app_name, VERSION),
@@ -82,6 +110,7 @@ pub fn build_serve(_settings: &Settings, exe: &Path) -> AppServer {
         ManagedBy::Service,
     ));
     AppServer::new(&CTX, VERSION)
+        .releases(edition.releases())
         .app_api(sapphire_sync_api::API_VERSION)
         .sync(Arc::clone(&runtime))
         .status_rows(status_rows(runtime))
