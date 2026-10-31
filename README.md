@@ -1,3 +1,5 @@
+<img src="docs/icon.svg" alt="" width="72" height="72">
+
 # sapphire-sync
 
 [English](README.md) | [日本語](README.ja.md)
