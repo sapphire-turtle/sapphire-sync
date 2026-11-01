@@ -54,6 +54,9 @@ cargo install sapphire-sync-headless
 
 Either installs the `sapphire-sync` binary. (0.13 to 0.14 were published as the
 `sapphire-sync` crate.)
+`sapphire-bridge`, which it syncs through, is the `sapphire-bridge-headless`
+crate (`cargo binstall sapphire-bridge-headless`; it was the `sapphire-bridge`
+crate up to 0.23).
 
 ## Quick start
 
@@ -64,9 +67,11 @@ $ sapphire-sync serve &             # this host's sync node
 $ sapphire-sync workspace show      # this host's workspace, then the workgroup's
 ```
 
-The framework's own verbs (`workgroup create`, `device invite`, `workgroup join`)
-are documented in the framework repository's README — this app re-exports them
-unchanged.
+Workgroups and devices are `sapphire-bridge`'s (`sapphire-bridge workgroup
+create`, `sapphire-bridge device invite`, `sapphire-bridge workgroup join`); see
+the framework repository's README. Since sapphire-framework 0.24 this app no
+longer re-exports them. Its own framework verbs are `serve`, `status`,
+`service`, `update`, `workspace`, `api-key` and `config`.
 
 ## How the pieces fit
 

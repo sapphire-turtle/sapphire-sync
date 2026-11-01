@@ -50,6 +50,8 @@ cargo install sapphire-sync-headless
 ```
 
 どちらも `sapphire-sync` バイナリを入れます（0.13 から 0.14 は `sapphire-sync` という crate 名で公開していました）。
+同期に使う `sapphire-bridge` は `sapphire-bridge-headless` crate です
+（`cargo binstall sapphire-bridge-headless`。0.23 までは `sapphire-bridge` という crate 名でした）。
 
 ## クイックスタート
 
@@ -60,9 +62,11 @@ $ sapphire-sync serve &             # このホストの同期ノード
 $ sapphire-sync workspace show      # このホストのワークスペースと、ワークグループのもの
 ```
 
-フレームワーク自身の動詞（`workgroup create`、`device invite`、`workgroup join`）は
-フレームワーク側リポジトリの README にあります。このアプリはそれをそのまま再エクスポート
-しています。
+ワークグループとデバイスは `sapphire-bridge` のコマンドです（`sapphire-bridge workgroup create`、
+`sapphire-bridge device invite`、`sapphire-bridge workgroup join`）。フレームワーク側リポジトリの
+README を参照してください。sapphire-framework 0.24 から、このアプリはそれらを再エクスポート
+しません。このアプリにあるフレームワークの動詞は `serve`、`status`、`service`、`update`、
+`workspace`、`api-key`、`config` です。
 
 ## 部品のつながり
 

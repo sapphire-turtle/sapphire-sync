@@ -14,7 +14,9 @@
 use clap::Parser;
 use sapphire_framework::gui::app::{AppOptions, AppSetup};
 use sapphire_framework::gui::client::AppIdentity;
-use sapphire_framework::gui::{Destination, Settings, Shell, eframe, egui, i18n, tr};
+use sapphire_framework::gui::{
+    Destination, Settings, Shell, ShellApp, Side, eframe, egui, i18n, tr,
+};
 use sapphire_sync_cli::cli::AppCommand;
 
 const APP: AppIdentity = AppIdentity {
@@ -39,13 +41,24 @@ enum Screen {
 
 struct App {
     shell: Shell<Screen>,
+    screens: Screens,
+}
+
+/// What the shell draws: the screens. The side pane keeps the shell's default (empty)
+/// until the Files screen has items to open in it.
+struct Screens;
+
+impl ShellApp<Screen> for Screens {
+    fn screen_ui(&mut self, ui: &mut egui::Ui, screen: Screen, _side: &mut Side) {
+        match screen {
+            Screen::Files => files_ui(ui),
+        }
+    }
 }
 
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        self.shell.ui(ui, |ui, screen| match screen {
-            Screen::Files => files_ui(ui),
-        });
+        self.shell.show(ui, &mut self.screens);
     }
 }
 
@@ -98,7 +111,10 @@ fn window() -> eframe::Result<()> {
             );
             // Settings is all the app does until Files browses the folder.
             shell.open_settings();
-            Box::new(App { shell })
+            Box::new(App {
+                shell,
+                screens: Screens,
+            })
         },
     )
 }
