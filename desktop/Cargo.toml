@@ -9,6 +9,22 @@ license-file = "LICENSE"
 repository.workspace = true
 publish = false
 
+[[bin]]
+name = "sapphire-sync-desktop"
+path = "src/main.rs"
+
+# The Windows console shim the package puts on `PATH` as `sapphire-sync.exe`
+# (src/bin/console.rs).
+[[bin]]
+name = "sapphire-sync-console"
+path = "src/bin/console.rs"
+required-features = ["velopack"]
+
+[features]
+# The release workflow's build: the Velopack package's start, its updater, its first run
+# and its service (src/package.rs). `cargo build` makes the plain binary.
+velopack = ["sapphire-framework/package", "dep:tokio"]
+
 [dependencies]
 # Every command but the window — `serve`, `status`, `sync`, `workspace`, … —
 # runs the CLI's own code, so this one binary does all the CLI does.
@@ -16,7 +32,12 @@ sapphire-sync-cli.workspace = true
 clap.workspace = true
 # `eframe`: `gui::app::run` starts the window, and `gui::{eframe, egui}` are the
 # versions it renders with.
-sapphire-framework = { version = "0.24.0", default-features = false, features = ["eframe"] }
+sapphire-framework = { version = "0.24.1", default-features = false, features = ["eframe", "server"] }
+# The window's icon and app-menu entry (`LauncherSpec`'s icon), and whether this runs in a
+# package; the framework's version of it.
+corundum-framework-platform = "0.7.0"
+# `update` in the package runs `sapphire-bridge update` first.
+tokio = { workspace = true, features = ["rt"], optional = true }
 
 # `cargo binstall --git https://github.com/sapphire-turtle/sapphire-sync sapphire-sync-desktop`
 # downloads the release file instead of building it (this crate is not on crates.io), following

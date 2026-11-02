@@ -21,11 +21,21 @@ PATH: the desktop app's binary also runs every command of the headless one (`ser
 
 | Edition | For | How |
 |---|---|---|
-| Desktop app (`sapphire-sync-desktop`) | Everyday use, with the GUI | Installer for Windows, macOS and Linux (in preparation) |
+| Desktop app (`sapphire-sync-desktop`) | Everyday use, with the GUI | Installer for Windows, macOS and Linux |
 | Headless (`sapphire-sync-headless`) | Hosts and servers without a GUI | Install script, cargo-binstall or cargo |
 
 Installing both leaves two `sapphire-sync` commands; `sapphire-sync status` warns
 when the one on PATH is not the one you ran.
+
+### Desktop app: installer
+
+Download the installer for your platform from the [latest release](https://github.com/sapphire-turtle/sapphire-sync/releases/latest):
+`sapphire-sync-desktop-win-Setup.exe` (Windows), `sapphire-sync-desktop-osx-Setup.pkg` (macOS) or
+`sapphire-sync-desktop.AppImage` (Linux). It puts `sapphire-sync` on your `PATH` and keeps itself up to
+date; its first start asks to keep the app server running in the background, for the MCP
+server and HTTP clients while the window is closed. Sync goes through Sapphire Bridge,
+which has an installer of its own on
+[sapphire-framework's latest release](https://github.com/sapphire-turtle/sapphire-framework/releases/latest) (`sapphire-bridge-desktop-*`).
 
 ### Headless: install script
 

@@ -35,5 +35,7 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/release-binaries.yml
+    # The macOS signing secrets, for the package (release-binaries.yml, job `pack`).
+    secrets: inherit
     with:
       tag: ${{ fromJSON(needs.release-plz.outputs.tags)['sapphire-sync-headless'] }}
