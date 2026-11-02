@@ -26,6 +26,16 @@ ignore = [
     { id = "RUSTSEC-2026-0370", reason = "zvariant is unmaintained as a standalone crate (merged into zbus 6). Reached via eframe > egui-winit > accesskit_winit > accesskit_unix (Linux screen reader support), whose latest release still pins zbus ^5.19 and atspi ^0.29. Drop when accesskit_unix moves to zbus 6." },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names is unmaintained as a standalone crate (merged into zbus 6). Same path and reason as RUSTSEC-2026-0370." },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is unmaintained as a standalone crate (merged into zbus 6). Same path and reason as RUSTSEC-2026-0370." },
+    # velopack 1.2.161 (sapphire-framework's `package` feature, via corundum-framework-package;
+    # the desktop app's `velopack` feature) pins zip 8 and depends on derivative. The zip
+    # advisories are all in ZipArchive::extract, which only velopack's updater calls, on
+    # packages fetched over HTTPS from this repository's releases. Drop with
+    # corundum-framework#64 (velopack's next stable release, on zip 9).
+    { id = "RUSTSEC-2026-0367", reason = "zip 8 keeps SUID/SGID bits in ZipArchive::extract. Reached via velopack 1.2.161 (desktop `velopack` feature), which pins zip 8. Re-check with corundum-framework#64." },
+    { id = "RUSTSEC-2026-0368", reason = "zip 8's ZipArchive::extract follows symlink targets outside the destination. Same path and reason as RUSTSEC-2026-0367." },
+    { id = "RUSTSEC-2026-0369", reason = "zip 8's extract applies permissions through symlinks. Same path and reason as RUSTSEC-2026-0367." },
+    { id = "RUSTSEC-2026-0429", reason = "zip 8's extract sizes a symlink-target buffer from the declared ZIP64 size. Same path and reason as RUSTSEC-2026-0367." },
+    { id = "RUSTSEC-2024-0388", reason = "derivative is unmaintained, with no vulnerability; velopack 1.2.161 depends on it. Re-check with corundum-framework#64." },
 ]
 
 [licenses]
