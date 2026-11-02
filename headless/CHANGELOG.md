@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- [**breaking**] sapphire-framework 0.24.0. `workgroup`, `device` and `embedding` are gone from `sapphire-sync`: run them as `sapphire-bridge workgroup|device|embedding`. `external-device` is now `api-key` (the old name is a hidden alias for this release); keys are per workspace, kept in `<workspace>/.sapphire-sync/api_keys/`, and `api-key add` requires `--profile read-only|read-write|admin`. Keys that existed before become read-only: a client that writes over HTTP gets 403 until it has a new key. The `sapphire-bridge` crate is now `sapphire-bridge-headless` (the command keeps its name). On Windows, settings and data move from `%APPDATA%` to `%LOCALAPPDATA%\sapphire-sync` on the first start; on macOS the LaunchAgent is relabelled `org.sapphire-turtle.sapphire-sync` by `service install`. Upgrade `sapphire-bridge` together with this release.
+
 ## [0.14.1](https://github.com/sapphire-turtle/sapphire-sync/compare/v0.14.0...v0.14.1) - 2026-10-25
 
 ### Added

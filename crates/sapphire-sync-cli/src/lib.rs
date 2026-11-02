@@ -3,7 +3,7 @@
 //! As `serve`, it is the embedded server (`sapphire-sync-server`); every other
 //! subcommand is a one-shot invocation that talks to that server over the
 //! local socket — the app's own `sync` verb and the framework's (`status`,
-//! `service`, `workspace`, `workgroup`, …).
+//! `service`, `workspace`, `api-key`, `config`, …).
 //!
 //! The modules are a library so the integration tests can link them, and so
 //! both editions run the same commands ([`run`]): the headless one

@@ -85,14 +85,35 @@ fn the_workspace_subcommands_parse() {
 }
 
 #[test]
-fn workgroup_and_device_lists_parse() {
-    for args in [vec!["workgroup", "list"], vec!["device", "list"]] {
+fn the_api_key_commands_parse() {
+    for args in [
+        vec!["api-key", "list"],
+        // The pre-0.24 name stays as a hidden alias for one release.
+        vec!["external-device", "list"],
+    ] {
         let cli = parse(&args);
         match cli.app {
-            AppCommand::Framework(FrameworkCommand::Workgroup(_))
-            | AppCommand::Framework(FrameworkCommand::Device(_)) => {}
+            AppCommand::Framework(
+                FrameworkCommand::ApiKey(_) | FrameworkCommand::ExternalDevice(_),
+            ) => {}
             other => panic!("{args:?} must parse as the framework's, got {other:?}"),
         }
+    }
+}
+
+/// Workgroups, devices and the embedding settings are `sapphire-bridge`'s
+/// since sapphire-framework 0.24; the app no longer re-exports them.
+#[test]
+fn the_bridges_verbs_are_not_the_apps() {
+    for args in [
+        ["workgroup", "list"],
+        ["device", "list"],
+        ["embedding", "show"],
+    ] {
+        assert!(
+            Cli::try_parse_from(std::iter::once("sapphire-sync").chain(args)).is_err(),
+            "{args:?} must not parse: it is sapphire-bridge's"
+        );
     }
 }
 
@@ -114,14 +135,7 @@ fn the_apps_sync_and_the_frameworks_groups_coexist() {
         panic!("--help must not parse as success")
     };
     let text = help.render().to_string();
-    for verb in [
-        "sync",
-        "workspace",
-        "workgroup",
-        "device",
-        "status",
-        "serve",
-    ] {
+    for verb in ["sync", "workspace", "api-key", "config", "status", "serve"] {
         assert!(text.contains(verb), "--help must list {verb}: {text}");
     }
 }
