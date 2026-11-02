@@ -995,7 +995,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92f9840be85d8d9bc6d203e8cb044012a2fb1885cbac20dc41a407f6f2ac55ff"
 dependencies = [
  "corundum-framework-keys",
+ "corundum-framework-package",
  "corundum-framework-platform",
+ "corundum-framework-service",
+ "corundum-framework-update",
  "eframe",
  "egui",
  "egui_extras",
@@ -1010,7 +1013,9 @@ dependencies = [
  "objc2-ui-kit 0.3.2",
  "raw-window-handle",
  "rfd",
+ "semver",
  "serde",
+ "tokio",
  "toml",
  "tracing",
  "ttf-parser",
@@ -1034,6 +1039,23 @@ dependencies = [
  "toml",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "corundum-framework-package"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b14c0cfbecefe7780feaa1d40e1d9b9953a011458c1f46bfb819683a22d9cee"
+dependencies = [
+ "corundum-framework-platform",
+ "corundum-framework-service",
+ "corundum-framework-update",
+ "semver",
+ "thiserror 2.0.21",
+ "tracing",
+ "url",
+ "velopack",
+ "windows",
 ]
 
 [[package]]
@@ -1065,6 +1087,22 @@ dependencies = [
  "libc",
  "thiserror 2.0.21",
  "tracing",
+]
+
+[[package]]
+name = "corundum-framework-update"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88470f8b198d8a56eeb68d55ef39bfeed5b68ae7281003926da5ed5c00d1fac4"
+dependencies = [
+ "corundum-framework-platform",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
+ "windows",
 ]
 
 [[package]]
@@ -1205,6 +1243,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e9de72ce2ad1f90dc62fa25f0f430ef85eb4b0d8fa0be4f30373bc40a21d28e"
 dependencies = [
  "serde_core",
+]
+
+[[package]]
+name = "derivative"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -2031,6 +2080,12 @@ dependencies = [
  "smallvec",
  "vello_common",
 ]
+
+[[package]]
+name = "glob"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 
 [[package]]
 name = "globset"
@@ -3137,6 +3192,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df9761775871bdef83bee530e60050f7e54b1105350d6884eb0fb4f46c2f9405"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "normpath"
+version = "1.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b11ce00d2594068e8a27c9146fdc5cf9f3ac38eb42c7cd34d05fea618873ac9f"
+dependencies = [
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4518,7 +4582,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "aws-lc-rs",
+ "log",
  "once_cell",
+ "ring",
  "rustls-pki-types",
  "rustls-webpki",
  "subtle",
@@ -4603,9 +4669,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0ed56e54b56dc8b81b72f0ab3cecc2cb04adf2f7b33cadaf8aa4787f70f3dcd"
+checksum = "e92974ed3254757bfd56207bf388bc6249ddd573d72954283f42896c077da310"
 dependencies = [
  "sapphire-framework-backend",
  "sapphire-framework-bridge",
@@ -4618,9 +4684,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-backend"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7315bac28c29298a0e66d2aaa630f5491ca3558ca278cabc1e9c181d15b490ff"
+checksum = "2c4424f03a4c314c89fa4e0d4cc6a553a6bad325eb3a8ca47dc12619e5e1e2c7"
 dependencies = [
  "async-trait",
  "chrono",
@@ -4638,9 +4704,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-bridge"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cca100a1ff25ccbfe8ba48165d27490b81d91872f29c49f5e133e4694622850b"
+checksum = "78f6bc514de8674f619bb290f05531f0ab8cb3393b782d1e74b730a74be4f87b"
 dependencies = [
  "async-trait",
  "chrono",
@@ -4691,9 +4757,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-bridge-client"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6668b7f2e177d3a611b177f02529509e5f0c2bb4d8aa51ab1e7a047c76f1e00"
+checksum = "b4f02f61551fd4275a1f0df75590c75b25d9bafde4191bed2427f52ae1f3a9c2"
 dependencies = [
  "sapphire-framework-bridge-api",
  "sapphire-framework-ipc",
@@ -4705,13 +4771,15 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-gui"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18d3ddb93ff88d41d67bae72cb7fe7df70b2b69ee3603e0bf4543cb14e40e8f7"
+checksum = "649cf8d78fcddc1903fc61c8b539a6a7cbad95fd0c6442cac169d4f1f9ba401c"
 dependencies = [
  "corundum-framework-gui",
+ "corundum-framework-package",
  "corundum-framework-platform",
  "corundum-framework-service",
+ "corundum-framework-update",
  "eframe",
  "egui",
  "grain-id",
@@ -4728,9 +4796,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-ipc"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fba7f95b96feda286de4d9990d22f0f486e4d6a6f6ecf85747f4fb36d68e933"
+checksum = "9914519ab423a76616349446c6d6e9fc5482ba9786ca255baebfeddb828c96c1"
 dependencies = [
  "corundum-framework-platform",
  "libc",
@@ -4745,9 +4813,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-keys"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c63df5b48daf8c1910ba63f90c964671f2d5b5debe1a71801cc9915f55f2d4b2"
+checksum = "665f8ee0e9c6e7ba316ae4190670fb59c6895f6c6a858ef8f117f7c6a5d4a334"
 dependencies = [
  "async-trait",
  "corundum-framework-keys",
@@ -4757,9 +4825,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-registry"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4cc73995edecd9cd44f6ea6db8a0fc59626efd749471e25fc12a39da4015704"
+checksum = "50c5e3e58ced1dbd41482b1383b6b277a2cec3384ce2f005b12306e3ab6490f5"
 dependencies = [
  "base64 0.23.1",
  "chrono",
@@ -4773,9 +4841,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-retrieve"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c818dd63ebfd4fb8797606bf6b9517fd063760cf122b55425027fc23b2c208c"
+checksum = "50fb638d811be409200681fdf4e3369f3828cfeda564114e0b1a940e0ae61c66"
 dependencies = [
  "instant-distance",
  "redb",
@@ -4788,9 +4856,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-server"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86d6782b415e0926f3907fd962a04823a7551d7ecabd158176bb1c149d48d5f5"
+checksum = "d7dfd5e38162328ed6f6cabbe764942cb74c2cc16c986a330821b75a888be4d1"
 dependencies = [
  "async-trait",
  "clap",
@@ -4834,9 +4902,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-session"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb952c6051d742f5385f3512ea00aa00739f99a00ad14e775b2ef1f23c7afb7f"
+checksum = "1fa907db25d455ff91f9fd3ba663a36f75fc6a263c8837cfb181843c63166a9f"
 dependencies = [
  "grain-id",
  "sapphire-framework-sync",
@@ -4849,9 +4917,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-settings"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bbf521828640249b5ebc120d92fbe82cd33e27fef9cdd5688fd675b8c0f888f"
+checksum = "9b67b9b9186bb48d50f5567c30ee55dd9531871f92ed1ff1d8d0a82a13ab88e3"
 dependencies = [
  "sapphire-framework-bridge-api",
  "serde",
@@ -4862,9 +4930,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-sync"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "152a8ddeac60fae245ea33db44afeb480eac63d7637a8db3bef6c407fe85d8c4"
+checksum = "33c22e30adabb2bbf63ac7dcd612e8647411114c7bca572bd0f647d20c73cb20"
 dependencies = [
  "grain-id",
  "ignore",
@@ -4880,9 +4948,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-track"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ec81b4ff72aaf42a162f1083208567c866d8d3cd49accae51b51cba35e83476"
+checksum = "5a9eeb0cc2d7e9fe156efde4642f97653ff1a8d6eb9be31cf09bc465318e5848"
 dependencies = [
  "redb",
  "thiserror 2.0.21",
@@ -4891,9 +4959,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-update"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9406a9a464754c490378dbe298b629015df8ac68c8fb512786737de571ec1e1"
+checksum = "4dd09c2c1a110e799fc68632ddbf5e37f8871f597b429f16910040b30b62a2a0"
 dependencies = [
  "clap",
  "reqwest",
@@ -4908,9 +4976,9 @@ dependencies = [
 
 [[package]]
 name = "sapphire-framework-workspace"
-version = "0.24.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d01b93663b6e247e1e6552bd98ccd64e7bd92a3ed170e56eb85138d334777f3"
+checksum = "456e29e77b2579f584338b0c82502dcf0f05d5603c06df2914c4d851f322e974"
 dependencies = [
  "chrono",
  "clap",
@@ -4976,8 +5044,10 @@ name = "sapphire-sync-desktop"
 version = "0.15.0"
 dependencies = [
  "clap",
+ "corundum-framework-platform",
  "sapphire-framework",
  "sapphire-sync-cli",
+ "tokio",
 ]
 
 [[package]]
@@ -5089,6 +5159,10 @@ name = "semver"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
+dependencies = [
+ "serde",
+ "serde_core",
+]
 
 [[package]]
 name = "send_wrapper"
@@ -5166,6 +5240,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7523beb55eece201a2356bee0bbca0d1ab466c14c07703b2e0ee6d42cb0c2c"
 dependencies = [
  "serde_core",
+]
+
+[[package]]
+name = "sha1"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aacc4cc499359472b4abe1bf11d0b12e688af9a805fa5e3016f9a386dc2d0214"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest",
 ]
 
 [[package]]
@@ -5442,6 +5527,17 @@ name = "symlink"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7973cce6668464ea31f176d85b13c7ab3bba2cb3b77a2ed26abd7801688010a"
+
+[[package]]
+name = "syn"
+version = "1.0.109"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
+]
 
 [[package]]
 name = "syn"
@@ -6081,6 +6177,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "typed-path"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54ec2755506471f54baf5e4bb5499d8e510cc1caf271270e778a736bd2d7336c"
+
+[[package]]
 name = "typeid"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6194,6 +6296,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e497bb1f828cc9fb236722c2eaa100dcf201563f38f4da6252357a59037adf31"
 
 [[package]]
+name = "ureq"
+version = "3.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cde93ff05758a36a851a398a772b0b79a82fbe3c186a46f2696baaeaf84c966b"
+dependencies = [
+ "base64 0.23.1",
+ "flate2",
+ "log",
+ "percent-encoding",
+ "rustls",
+ "rustls-pki-types",
+ "ureq-proto",
+ "utf8-zero",
+ "webpki-roots",
+]
+
+[[package]]
+name = "ureq-proto"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "841583fc36089d7d59419568ae157f43a5a03a2e5a81ba87c77d1596ef46e922"
+dependencies = [
+ "base64 0.23.1",
+ "http",
+ "httparse",
+ "log",
+]
+
+[[package]]
 name = "url"
 version = "2.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6253,6 +6384,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcfc827f90e53a02eaef5e535ee14266c1d569214c6aa70133a624d8a3164ba"
 
 [[package]]
+name = "utf8-zero"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8c0a043c9540bae7c578c88f91dda8bd82e59ae27c21baca69c8b191aaf5a6e"
+
+[[package]]
 name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6272,6 +6409,7 @@ checksum = "4a0e2d11620c50695fe12bbbfde96b3477fe606e7284c22d505c12ce51214514"
 dependencies = [
  "getrandom 0.4.3",
  "js-sys",
+ "rand 0.10.3",
  "serde_core",
  "wasm-bindgen",
 ]
@@ -6312,10 +6450,61 @@ dependencies = [
 ]
 
 [[package]]
+name = "velopack"
+version = "1.2.161"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4295172ffaad78f9adbab35f7ffefa97e4ceefee9d2c38bda37fdce4d6c66e5a"
+dependencies = [
+ "anyhow",
+ "bitflags 2.13.2",
+ "derivative",
+ "glob",
+ "lazy_static",
+ "libc",
+ "log",
+ "normpath",
+ "rand 0.10.3",
+ "regex",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "thiserror 2.0.21",
+ "ureq",
+ "url",
+ "uuid",
+ "wait-timeout",
+ "waitpid-any",
+ "windows",
+ "xml",
+ "zip",
+]
+
+[[package]]
 name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "wait-timeout"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09ac3b126d3914f9849036f826e054cbabdc8519970b8998ddaf3b5bd3c65f11"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "waitpid-any"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18aa3ce681e189f125c4c1e1388c03285e2fd434ef52c7203084012ac29c5e4a"
+dependencies = [
+ "rustix 1.1.5",
+ "windows-sys 0.59.0",
+]
 
 [[package]]
 name = "walkdir"
@@ -6583,6 +6772,15 @@ name = "webpki-root-certs"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e49d0e65abc00c142e8f9428da991da9f1a250c39be97459901eb12b9b49f62a"
+dependencies = [
+ "rustls-pki-types",
+]
+
+[[package]]
+name = "webpki-roots"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5f280bbb2b287bc8e7de7e3852945a0ff50d1bbcb5ed42b6c7a568c546df171"
 dependencies = [
  "rustls-pki-types",
 ]
@@ -7169,6 +7367,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
 
 [[package]]
+name = "xml"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f45bb2c13fec6a6cb4c0f76a7e94839e110a14ec803ec2940777a94c347bc52"
+
+[[package]]
 name = "xml-rs"
 version = "0.8.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7402,6 +7606,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "zip"
+version = "8.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d04a6b5381502aa6087c94c669499eb1602eb9c5e8198e534de571f7154809b"
+dependencies = [
+ "crc32fast",
+ "flate2",
+ "indexmap",
+ "memchr",
+ "typed-path",
+ "zopfli",
+]
+
+[[package]]
 name = "zlib-rs"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7412,6 +7630,18 @@ name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
+
+[[package]]
+name = "zopfli"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaf7fc5d30c28483d93805c4a5e12b05bbb52407fa67c5f8bd552374cd01fb11"
+dependencies = [
+ "bumpalo",
+ "crc32fast",
+ "log",
+ "simd-adler32",
+]
 
 [[package]]
 name = "zstd"
