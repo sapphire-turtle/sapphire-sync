@@ -39,3 +39,241 @@ jobs:
       package: sapphire-sync-desktop
       binary: sapphire-sync-desktop
       linux-packages: libwayland-dev libxkbcommon-dev
+
+  # Sapphire Sync as a Velopack package (#357): an installer per desktop OS, and the files
+  # the installed app updates itself from (desktop/src/package.rs reads this repository's
+  # latest release). The package holds the desktop binary only, which runs the CLI too; the
+  # bare binaries above stay for servers, the install script and `cargo binstall`.
+  # The macOS package is signed and notarized when the repository has the MACOS_CERTIFICATE
+  # and APPLE_API_KEY secrets, as sapphire-framework's release-bridge.yml; the others are not
+  # signed yet.
+  pack:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The oldest runner, so the AppImage runs on older glibc too.
+          - os: ubuntu-22.04
+            channel: linux
+            exe: ''
+            # The executable's name in the package (`--mainExe`): the command's, apart from
+            # Windows, where the GUI keeps its cargo name and the console shim has the
+            # command's.
+            main: sapphire-sync
+            icon: icon.png
+            extra: --categories Network
+          - os: macos-latest
+            channel: osx
+            exe: ''
+            main: sapphire-sync
+            icon: icon.icns
+            extra: --bundleId org.sapphire-turtle.sapphire-sync
+          - os: windows-latest
+            channel: win
+            exe: '.exe'
+            main: sapphire-sync-desktop.exe
+            icon: icon.ico
+            extra: ''
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      # vpk and the velopack crate (through corundum-framework-package) are released
+      # together; keep vpk at corundum's version.
+      VPK_VERSION: 1.2.161
+      # On Windows the package is installed in %LocalAppData%\<package id>, which its
+      # uninstall deletes: never the data directory's name (`sapphire-sync`, which holds the
+      # workspace's settings), so `<app>-desktop` (corundum-framework#57).
+      PACK_ID: sapphire-sync-desktop
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: The version from the tag
+        run: echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
+      # rustup installs the rust-toolchain.toml toolchain on first use.
+      - name: Install the pinned toolchain
+        run: cargo --version
+
+      # libfuse2 for the AppImage smoke test.
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler libwayland-dev libxkbcommon-dev libfuse2
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install protobuf
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: choco install protoc -y
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk --version "$VPK_VERSION"
+
+      - name: Build
+        run: cargo build --release --locked -p sapphire-sync-desktop --features velopack --bins
+
+      - name: Render the icon
+        run: cargo run --release --locked -p sapphire-sync-desktop --example icons -- icons
+
+      # A keychain of its own with the Developer ID Application and Installer certificates and
+      # the notary profile, for vpk to sign and notarize the app and its .pkg. Without the
+      # secrets (a fork, say) the package is made unsigned.
+      - name: Set up signing (macOS)
+        if: runner.os == 'macOS'
+        env:
+          # The .p12 of both certificates, base64.
+          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          # An App Store Connect team key: the .p8's text, its key ID and its issuer ID.
+          API_KEY: ${{ secrets.APPLE_API_KEY }}
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          if [ -z "$CERTIFICATE" ]; then
+            echo "::warning::No MACOS_CERTIFICATE secret: the macOS package is not signed"
+            exit 0
+          fi
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password=$(openssl rand -base64 24)
+          security create-keychain -p "$password" "$keychain"
+          # Notarizing takes minutes; the keychain must not lock meanwhile.
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          printf '%s' "$CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/productsign
+          rm "$RUNNER_TEMP/certificate.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain" > /dev/null
+          # vpk passes --keychain to codesign and notarytool but not to productbuild, which
+          # signs the .pkg and finds its identity only in the search list.
+          # Unquoted on purpose: the list is one keychain per line.
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+          printf '%s\n' "$API_KEY" > "$RUNNER_TEMP/api-key.p8"
+          xcrun notarytool store-credentials notary --keychain "$keychain" \
+            --key "$RUNNER_TEMP/api-key.p8" --key-id "$API_KEY_ID" --issuer "$API_ISSUER_ID"
+          rm "$RUNNER_TEMP/api-key.p8"
+
+          # The identities by their kind, so the workflow names no team.
+          identity() {
+            security find-identity -v "$keychain" | sed -n "s/.*\"\($1: .*\)\"$/\1/p" | head -n 1
+          }
+          app=$(identity "Developer ID Application")
+          install=$(identity "Developer ID Installer")
+          if [ -z "$app" ] || [ -z "$install" ]; then
+            echo "MACOS_CERTIFICATE lacks a Developer ID Application or Installer identity"
+            security find-identity -v "$keychain"
+            exit 1
+          fi
+          {
+            echo "SIGN_KEYCHAIN=$keychain"
+            echo "SIGN_APP_IDENTITY=$app"
+            echo "SIGN_INSTALL_IDENTITY=$install"
+          } >> "$GITHUB_ENV"
+
+      - name: Pack
+        env:
+          EXE: ${{ matrix.exe }}
+          MAIN: ${{ matrix.main }}
+          CHANNEL: ${{ matrix.channel }}
+          ICON: icons/${{ matrix.icon }}
+          EXTRA: ${{ matrix.extra }}
+        run: |
+          mkdir pack
+          # One binary: the app server is its `serve` subcommand.
+          cp "target/release/sapphire-sync-desktop$EXE" "pack/$MAIN"
+          # The console shim, under the command's name, for the install hook to put on `Path`.
+          if [ "$RUNNER_OS" = Windows ]; then
+            cp target/release/sapphire-sync-console.exe pack/sapphire-sync.exe
+          fi
+          # Set by "Set up signing (macOS)"; an array, as the identities have spaces.
+          sign=()
+          if [ -n "${SIGN_APP_IDENTITY:-}" ]; then
+            sign=(
+              --signAppIdentity "$SIGN_APP_IDENTITY"
+              --signInstallIdentity "$SIGN_INSTALL_IDENTITY"
+              --notaryProfile notary
+              --keychain "$SIGN_KEYCHAIN"
+            )
+          fi
+          # Unquoted on purpose: EXTRA is a list of arguments.
+          vpk pack \
+            --packId "$PACK_ID" \
+            --packVersion "$VERSION" \
+            --packDir pack \
+            --mainExe "$MAIN" \
+            --packTitle "Sapphire Sync" \
+            --packAuthors "sapphire-turtle" \
+            --icon "$ICON" \
+            --channel "$CHANNEL" \
+            --delta None \
+            --outputDir releases \
+            $EXTRA \
+            ${sign[@]+"${sign[@]}"}
+          ls -la releases
+
+      - name: Remove the signing keychain (macOS)
+        if: always() && env.SIGN_KEYCHAIN != ''
+        run: security delete-keychain "$SIGN_KEYCHAIN"
+
+      - name: Smoke test the AppImage (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          appimage=$(ls releases/*.AppImage)
+          chmod +x "$appimage"
+          "$appimage" --version
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: releases-${{ matrix.channel }}
+          path: releases/
+
+  # Uploads each channel's files to the release, merged with what is already there (the
+  # bare binaries, the other channels).
+  release:
+    needs: pack
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VPK_VERSION: 1.2.161
+      TAG: ${{ inputs.tag }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: releases-*
+          path: releases
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk --version "$VPK_VERSION"
+
+      # One channel at a time: --merge reads the release's assets and adds to them.
+      - name: Upload
+        run: |
+          for channel in linux osx win; do
+            vpk upload github \
+              --outputDir "releases/releases-$channel" \
+              --channel "$channel" \
+              --repoUrl "https://github.com/$GITHUB_REPOSITORY" \
+              --token "$GITHUB_TOKEN" \
+              --tag "$TAG" \
+              --releaseName "$TAG" \
+              --merge
+          done

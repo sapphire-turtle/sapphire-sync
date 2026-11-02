@@ -19,11 +19,21 @@ sapphire-sync は [sapphire-framework](https://github.com/sapphire-turtle/sapphi
 
 | 版 | 用途 | 入れ方 |
 |---|---|---|
-| デスクトップ版（`sapphire-sync-desktop`） | GUI を使うふだんの利用 | Windows・macOS・Linux のインストーラー（準備中） |
+| デスクトップ版（`sapphire-sync-desktop`） | GUI を使うふだんの利用 | Windows・macOS・Linux のインストーラー |
 | ヘッドレス版（`sapphire-sync-headless`） | GUI のないホストやサーバー | インストールスクリプト、cargo-binstall、cargo |
 
 両方を入れると `sapphire-sync` が2つになります。PATH 上のものが実行したものと違うときは、
 `sapphire-sync status` が警告します。
+
+### デスクトップ版：インストーラー
+
+[最新のリリース](https://github.com/sapphire-turtle/sapphire-sync/releases/latest)から、お使いの OS のインストーラーをダウンロードしてください。
+Windows は `sapphire-sync-desktop-win-Setup.exe`、macOS は `sapphire-sync-desktop-osx-Setup.pkg`、
+Linux は `sapphire-sync-desktop.AppImage` です。PATH に `sapphire-sync` を置き、自分で最新版に更新します。
+初回の起動時に、ウィンドウを閉じている間も MCP サーバーや HTTP のクライアントが使えるよう、
+アプリサーバーをバックグラウンドで動かし続けるかを尋ねます。同期は Sapphire Bridge を通るので、
+[sapphire-framework の最新のリリース](https://github.com/sapphire-turtle/sapphire-framework/releases/latest)にある Sapphire Bridge のインストーラー
+（`sapphire-bridge-desktop-*`）も入れてください。
 
 ### ヘッドレス版：インストールスクリプト
 
