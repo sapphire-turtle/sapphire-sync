@@ -37,11 +37,16 @@ fn main() -> eframe::Result<()> {
         .expect("a tokio runtime");
     let config = ClientConfig::new(APP).expect("the runtime directory and this executable's path");
 
+    let viewport = eframe::egui::ViewportBuilder::default()
+        .with_inner_size([900.0, 600.0])
+        .with_min_inner_size([640.0, 420.0])
+        .with_title("Sapphire Sync");
+    // macOS takes the Dock icon from the app bundle; without this, eframe would replace it
+    // with its own default icon while the window is open.
+    #[cfg(target_os = "macos")]
+    let viewport = viewport.with_icon(std::sync::Arc::new(eframe::egui::IconData::default()));
     let options = eframe::NativeOptions {
-        viewport: eframe::egui::ViewportBuilder::default()
-            .with_inner_size([900.0, 600.0])
-            .with_min_inner_size([640.0, 420.0])
-            .with_title("Sapphire Sync"),
+        viewport,
         wgpu_options: gpu::wgpu_options(),
         ..Default::default()
     };
